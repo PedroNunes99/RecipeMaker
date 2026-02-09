@@ -1,0 +1,79 @@
+generator client {
+  provider             = "prisma-client-py"
+  recursive_type_depth = -1
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+model User {
+  id          String   @id @default(uuid())
+  email       String   @unique
+  name        String?
+  recipeLists RecipeList[]
+  recipes     Recipe[]
+}
+
+model Ingredient {
+  id            String   @id @default(uuid())
+  name          String
+  calories      Float    // per 100g or unit
+  protein       Float
+  carbohydrates Float
+  fats          Float
+  vitamins      String?  // JSON string
+  minerals      String?  // JSON string
+  unit          String   // g, ml, piece
+  category      String   // vegetable, meat, etc.
+  image         String?
+  purchaseInfo  String?  // JSON string
+  recipeIngredients RecipeIngredient[]
+}
+
+model Recipe {
+  id              String   @id @default(uuid())
+  title           String
+  description     String?
+  servings        Int      @default(1)
+  totalCalories   Float    @default(0)
+  totalProtein    Float    @default(0)
+  totalCarbs      Float    @default(0)
+  totalFat        Float    @default(0)
+  isAiGenerated   Boolean  @default(false)
+  creatorId       String?
+  creator         User?    @relation(fields: [creatorId], references: [id])
+  steps           RecipeStep[]
+  ingredients     RecipeIngredient[]
+  recipeLists     RecipeList[] @relation("RecipeToRecipeList")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model RecipeStep {
+  id          String   @id @default(uuid())
+  order       Int
+  instruction String
+  photoUrl    String?
+  recipeId    String
+  recipe      Recipe   @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+}
+
+model RecipeIngredient {
+  id           String     @id @default(uuid())
+  quantity     Float
+  unit         String
+  recipeId     String
+  recipe       Recipe     @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+  ingredientId String
+  ingredient   Ingredient @relation(fields: [ingredientId], references: [id])
+}
+
+model RecipeList {
+  id      String   @id @default(uuid())
+  name    String
+  userId  String
+  user    User     @relation(fields: [userId], references: [id])
+  recipes Recipe[] @relation("RecipeToRecipeList")
+}

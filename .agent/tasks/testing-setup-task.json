@@ -1,0 +1,66 @@
+{
+  "taskName": "Frontend Testing Infrastructure Setup",
+  "description": "Set up complete testing infrastructure for React frontend and write comprehensive tests for all components",
+  "workflow": "feature-development",
+  "requirements": {
+    "developer": {
+      "tasks": [
+        "Install testing dependencies: vitest, @testing-library/react, @testing-library/jest-dom, @testing-library/user-event, jsdom",
+        "Create vitest.config.js with React testing configuration",
+        "Set up test utilities and helpers in client/src/test-utils.jsx",
+        "Add test script to client/package.json",
+        "Create sample test to verify setup works"
+      ]
+    },
+    "tester": {
+      "tasks": [
+        "Write comprehensive tests for IngredientManager.jsx covering all functionality",
+        "Write comprehensive tests for RecipeDetail.jsx covering all functionality",
+        "Write comprehensive tests for App.jsx covering routing and component rendering",
+        "Test user interactions (clicks, inputs, form submissions)",
+        "Test API call mocking and data fetching",
+        "Test error states and edge cases",
+        "Aim for 80%+ code coverage"
+      ]
+    },
+    "validator": {
+      "tasks": [
+        "Run npm test to verify all tests pass",
+        "Check test coverage report",
+        "Verify no console errors during test runs",
+        "Validate test output is clean and readable",
+        "Report any failing tests or issues"
+      ]
+    },
+    "documenter": {
+      "tasks": [
+        "Create client/TESTING.md with testing guide",
+        "Document how to run tests (npm test, npm run test:coverage)",
+        "Document testing patterns and best practices used",
+        "Add examples of how to write new tests",
+        "Update main README.md with testing section"
+      ]
+    }
+  },
+  "context": {
+    "projectRoot": "c:/Users/paten/Projects/RecipeMaker",
+    "clientPath": "client",
+    "componentsToTest": [
+      "client/src/components/IngredientManager.jsx",
+      "client/src/components/RecipeDetail.jsx",
+      "client/src/App.jsx"
+    ],
+    "techStack": {
+      "framework": "React 19",
+      "buildTool": "Vite",
+      "styling": "Tailwind CSS"
+    }
+  },
+  "successCriteria": {
+    "testingFrameworkInstalled": true,
+    "allComponentsHaveTests": true,
+    "allTestsPass": true,
+    "coverageAbove70Percent": true,
+    "documentationComplete": true
+  }
+}

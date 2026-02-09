@@ -1,0 +1,23 @@
+{
+  "name": "recipemaker-agent-system",
+  "version": "1.0.0",
+  "description": "Multi-agent autonomous development system for RecipeMaker",
+  "type": "module",
+  "main": "orchestrator.js",
+  "scripts": {
+    "start": "node orchestrator.js",
+    "dev": "node --watch orchestrator.js",
+    "agent:dev": "node agents/developer.js",
+    "agent:test": "node agents/tester.js",
+    "agent:validate": "node agents/validator.js",
+    "agent:docs": "node agents/documenter.js"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.32.1",
+    "dotenv": "^16.4.7",
+    "chokidar": "^4.0.3",
+    "ws": "^8.18.0"
+  },
+  "author": "",
+  "license": "ISC"
+}

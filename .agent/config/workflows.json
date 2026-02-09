@@ -1,0 +1,165 @@
+{
+  "workflows": {
+    "feature-development": {
+      "name": "Feature Development Workflow",
+      "description": "Complete workflow for implementing a new feature",
+      "trigger": "manual",
+      "steps": [
+        {
+          "id": "analyze",
+          "agent": "orchestrator",
+          "action": "analyze-requirements",
+          "description": "Analyze feature requirements and create implementation plan"
+        },
+        {
+          "id": "implement",
+          "agent": "developer",
+          "action": "implement-feature",
+          "description": "Implement the feature according to requirements",
+          "dependencies": ["analyze"]
+        },
+        {
+          "id": "write-tests",
+          "agent": "tester",
+          "action": "write-tests",
+          "description": "Write comprehensive tests for the new feature",
+          "dependencies": ["implement"]
+        },
+        {
+          "id": "validate",
+          "agent": "validator",
+          "action": "run-tests-and-validate",
+          "description": "Run tests and validate the implementation",
+          "dependencies": ["write-tests"],
+          "onFailure": ["fix-issues"]
+        },
+        {
+          "id": "fix-issues",
+          "agent": "developer",
+          "action": "fix-failing-tests",
+          "description": "Fix any issues found during validation",
+          "optional": true,
+          "onSuccess": ["validate"]
+        },
+        {
+          "id": "document",
+          "agent": "documenter",
+          "action": "document-feature",
+          "description": "Generate documentation for the new feature",
+          "dependencies": ["validate"]
+        },
+        {
+          "id": "review",
+          "agent": "orchestrator",
+          "action": "prepare-pr",
+          "description": "Prepare pull request with all changes",
+          "dependencies": ["document"]
+        }
+      ]
+    },
+    "bug-fix": {
+      "name": "Bug Fix Workflow",
+      "description": "Workflow for fixing bugs",
+      "trigger": "manual",
+      "steps": [
+        {
+          "id": "investigate",
+          "agent": "developer",
+          "action": "investigate-bug",
+          "description": "Investigate and identify root cause"
+        },
+        {
+          "id": "fix",
+          "agent": "developer",
+          "action": "implement-fix",
+          "description": "Implement the bug fix",
+          "dependencies": ["investigate"]
+        },
+        {
+          "id": "test",
+          "agent": "tester",
+          "action": "write-regression-test",
+          "description": "Write regression test",
+          "dependencies": ["fix"]
+        },
+        {
+          "id": "validate",
+          "agent": "validator",
+          "action": "run-tests-and-validate",
+          "description": "Validate the fix",
+          "dependencies": ["test"]
+        },
+        {
+          "id": "document",
+          "agent": "documenter",
+          "action": "update-changelog",
+          "description": "Update changelog",
+          "dependencies": ["validate"]
+        }
+      ]
+    },
+    "continuous-improvement": {
+      "name": "Continuous Improvement Workflow",
+      "description": "Autonomous workflow that continuously improves the codebase",
+      "trigger": "scheduled",
+      "schedule": "0 */6 * * *",
+      "steps": [
+        {
+          "id": "analyze",
+          "agent": "orchestrator",
+          "action": "analyze-codebase",
+          "description": "Analyze codebase for improvement opportunities"
+        },
+        {
+          "id": "prioritize",
+          "agent": "orchestrator",
+          "action": "prioritize-improvements",
+          "description": "Prioritize improvements based on impact",
+          "dependencies": ["analyze"]
+        },
+        {
+          "id": "implement",
+          "agent": "developer",
+          "action": "implement-improvement",
+          "description": "Implement highest priority improvement",
+          "dependencies": ["prioritize"]
+        },
+        {
+          "id": "test",
+          "agent": "tester",
+          "action": "write-tests",
+          "description": "Write tests for improvements",
+          "dependencies": ["implement"]
+        },
+        {
+          "id": "validate",
+          "agent": "validator",
+          "action": "run-tests-and-validate",
+          "description": "Validate improvements",
+          "dependencies": ["test"]
+        }
+      ]
+    },
+    "documentation-update": {
+      "name": "Documentation Update Workflow",
+      "description": "Keep documentation in sync with code changes",
+      "trigger": "event",
+      "event": "code-change",
+      "steps": [
+        {
+          "id": "detect-changes",
+          "agent": "documenter",
+          "action": "detect-doc-requirements",
+          "description": "Detect what documentation needs updating"
+        },
+        {
+          "id": "update-docs",
+          "agent": "documenter",
+          "action": "update-documentation",
+          "description": "Update relevant documentation",
+          "dependencies": ["detect-changes"]
+        }
+      ]
+    }
+  }
+}

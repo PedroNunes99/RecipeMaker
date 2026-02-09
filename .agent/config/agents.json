@@ -1,0 +1,108 @@
+{
+  "agents": {
+    "developer": {
+      "name": "Developer Agent",
+      "description": "Implements features, fixes bugs, and refactors code",
+      "model": "deepseek-coder:33b",
+      "maxTokens": 4096,
+      "temperature": 0.7,
+      "tools": ["read", "write", "edit", "glob", "grep", "bash"],
+      "permissions": {
+        "canModifyCode": true,
+        "canInstallPackages": true,
+        "canModifyConfig": true,
+        "requiresApproval": true
+      },
+      "capabilities": [
+        "implement-feature",
+        "fix-bug",
+        "refactor-code",
+        "optimize-performance",
+        "add-error-handling"
+      ]
+    },
+    "tester": {
+      "name": "Testing Agent",
+      "description": "Writes unit tests, integration tests, and e2e tests",
+      "model": "deepseek-coder:33b",
+      "maxTokens": 4096,
+      "temperature": 0.5,
+      "tools": ["read", "write", "bash", "grep"],
+      "permissions": {
+        "canModifyCode": true,
+        "canRunTests": true,
+        "canInstallPackages": true,
+        "requiresApproval": false
+      },
+      "capabilities": [
+        "write-unit-tests",
+        "write-integration-tests",
+        "write-e2e-tests",
+        "update-tests",
+        "generate-test-data"
+      ]
+    },
+    "validator": {
+      "name": "Validation Agent",
+      "description": "Runs tests, checks code quality, and validates builds",
+      "model": "deepseek-coder:33b",
+      "maxTokens": 2048,
+      "temperature": 0.1,
+      "tools": ["bash", "read", "grep"],
+      "permissions": {
+        "canModifyCode": false,
+        "canRunTests": true,
+        "canRunLinter": true,
+        "requiresApproval": false
+      },
+      "capabilities": [
+        "run-tests",
+        "run-linter",
+        "check-types",
+        "validate-build",
+        "security-scan"
+      ]
+    },
+    "documenter": {
+      "name": "Documentation Agent",
+      "description": "Generates and maintains documentation",
+      "model": "deepseek-coder:33b",
+      "maxTokens": 4096,
+      "temperature": 0.3,
+      "tools": ["read", "write", "edit", "grep", "glob"],
+      "permissions": {
+        "canModifyCode": false,
+        "canModifyDocs": true,
+        "requiresApproval": false
+      },
+      "capabilities": [
+        "generate-api-docs",
+        "update-readme",
+        "create-user-guide",
+        "document-architecture",
+        "generate-changelog"
+      ]
+    },
+    "orchestrator": {
+      "name": "Orchestrator Agent",
+      "description": "Coordinates all agents and manages workflows",
+      "model": "deepseek-coder:33b",
+      "maxTokens": 4096,
+      "temperature": 0.2,
+      "tools": ["read", "bash", "grep", "glob"],
+      "permissions": {
+        "canCoordinateAgents": true,
+        "canModifyWorkflows": true,
+        "canAccessAllAgents": true,
+        "requiresApproval": false
+      },
+      "capabilities": [
+        "coordinate-workflow",
+        "assign-tasks",
+        "resolve-conflicts",
+        "prioritize-tasks",
+        "monitor-progress"
+      ]
+    }
+  }
+}
