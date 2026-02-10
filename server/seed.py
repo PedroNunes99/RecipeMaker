@@ -5,8 +5,13 @@ async def main():
     db = Prisma()
     await db.connect()
 
-    # Clear existing ingredients
-    await db.ingredient.delete_many()
+    # Clear existing data in correct order (foreign key dependencies)
+    print("Clearing existing data...")
+    await db.recipeingredient.delete_many()  # Delete recipe-ingredient links first
+    await db.recipestep.delete_many()         # Delete recipe steps
+    await db.recipe.delete_many()             # Delete recipes
+    await db.ingredient.delete_many()         # Finally delete ingredients
+    print("Existing data cleared.")
 
     ingredients_data = [
         # --- PROTEINS ---

@@ -17,8 +17,7 @@ class IngredientService:
             results = await db.ingredient.find_many(
                 where={
                     "name": {
-                        "contains": query,
-                        "mode": "insensitive"
+                        "contains": query
                     }
                 },
                 take=50

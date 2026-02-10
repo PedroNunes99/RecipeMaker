@@ -4,6 +4,8 @@ from prisma import Prisma
 from services.nutrition_service import NutritionService
 from services.ai_service import AIService
 from services.ingredient_service import IngredientService
+from services.usda_service import USDAService
+from models.recipe_models import RecipeCreateRequest, RecipeUpdateRequest
 import os
 from dotenv import load_dotenv
 
@@ -56,54 +58,301 @@ async def create_ingredient(data: dict):
     ingredient = await db.ingredient.create(data=data)
     return ingredient
 
+@app.get("/ingredients/usda/search")
+async def search_usda_ingredients(q: str, limit: int = 25):
+    """
+    Search USDA FoodData Central database for ingredients.
+    Returns up to 380,000+ foods with official USDA nutrition data.
+    """
+    try:
+        service = USDAService()
+        results = service.search_foods(q, page_size=limit)
+        return {
+            "source": "USDA FoodData Central",
+            "query": q,
+            "count": len(results),
+            "results": results
+        }
+    except ValueError as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"USDA API error: {str(e)}")
+
+@app.get("/ingredients/usda/{fdc_id}")
+async def get_usda_ingredient_details(fdc_id: int):
+    """
+    Get detailed nutrition information for a specific USDA food.
+    """
+    try:
+        service = USDAService()
+        food = service.get_food_details(fdc_id)
+
+        if not food:
+            raise HTTPException(status_code=404, detail="Food not found in USDA database")
+
+        return food
+    except ValueError as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"USDA API error: {str(e)}")
+
+@app.post("/ingredients/usda/import/{fdc_id}")
+async def import_usda_ingredient(fdc_id: int):
+    """
+    Import an ingredient from USDA database into local database.
+    """
+    try:
+        service = USDAService()
+
+        # Get detailed food data
+        usda_food = service.get_food_details(fdc_id)
+        if not usda_food:
+            raise HTTPException(status_code=404, detail="Food not found in USDA database")
+
+        # Convert to our ingredient format
+        ingredient_data = service.convert_to_ingredient_format(usda_food)
+
+        # Check if already exists
+        existing = await db.ingredient.find_first(where={"name": ingredient_data["name"]})
+        if existing:
+            raise HTTPException(status_code=409, detail=f"Ingredient '{ingredient_data['name']}' already exists")
+
+        # Create in database
+        ingredient = await db.ingredient.create(data=ingredient_data)
+
+        return {
+            "message": "Ingredient imported successfully",
+            "ingredient": ingredient,
+            "source": "USDA FoodData Central",
+            "fdcId": fdc_id
+        }
+
+    except HTTPException:
+        raise
+    except ValueError as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error importing ingredient: {str(e)}")
+
 @app.get("/recipes")
 async def get_recipes():
     recipes = await db.recipe.find_many(include={"steps": True, "ingredients": {"include": {"ingredient": True}}})
     return recipes
 
 @app.post("/recipes/manual")
-async def create_recipe_manual(data: dict):
+async def create_recipe_manual(data: RecipeCreateRequest):
+    """
+    Create a new recipe with automatic nutrition calculation.
+    Nutrition is calculated from the ingredient list and saved to the recipe.
+    """
     # Check for duplicates
-    existing = await db.recipe.find_first(where={"title": data['title']})
+    existing = await db.recipe.find_first(where={"title": data.title})
     if existing:
         raise HTTPException(status_code=409, detail="Recipe with this title already exists")
 
-    # data includes title, description, servings, steps (list), ingredients (list of {id, qty, unit})
+    # Fetch ingredient data and calculate nutrition
+    ingredients_with_data = []
+    for item in data.ingredients:
+        ing = await db.ingredient.find_unique(where={"id": item.ingredientId})
+        if not ing:
+            raise HTTPException(status_code=404, detail=f"Ingredient with ID {item.ingredientId} not found")
+
+        ingredients_with_data.append({
+            "ingredient": ing,
+            "quantity": item.quantity,
+            "unit": item.unit
+        })
+
+    # Calculate nutrition using existing NutritionService
+    totals = NutritionService.calculate_recipe_totals(ingredients_with_data)
+
+    # Create recipe WITH calculated nutrition
     recipe_data = {
-        "title": data['title'],
-        "description": data.get('description'),
-        "servings": data.get('servings', 1),
+        "title": data.title,
+        "description": data.description,
+        "servings": data.servings,
+        "totalCalories": totals["calories"],
+        "totalProtein": totals["protein"],
+        "totalCarbs": totals["carbs"],
+        "totalFat": totals["fat"],
     }
-    
-    # Calculate nutrition (this would be more robust in reality)
-    # For now, just create the recipe
+
     recipe = await db.recipe.create(data=recipe_data)
-    
+
     # Create steps
-    for step in data.get('steps', []):
+    for step in data.steps:
         await db.recipestep.create(data={
-            "order": step['order'],
-            "instruction": step['instruction'],
+            "order": step.order,
+            "instruction": step.instruction,
             "recipeId": recipe.id
         })
-        
+
     # Link ingredients
-    for item in data.get('ingredients', []):
+    for item in data.ingredients:
         await db.recipeingredient.create(data={
-            "quantity": item['quantity'],
-            "unit": item['unit'],
+            "quantity": item.quantity,
+            "unit": item.unit,
             "recipeId": recipe.id,
-            "ingredientId": item['ingredientId']
+            "ingredientId": item.ingredientId
         })
-        
-    return await db.recipe.find_unique(where={"id": recipe.id}, include={"steps": True, "ingredients": True})
+
+    return await db.recipe.find_unique(
+        where={"id": recipe.id},
+        include={"steps": True, "ingredients": {"include": {"ingredient": True}}}
+    )
+
+@app.get("/recipes/search")
+async def search_recipes(q: str):
+    """Search recipes by title or description."""
+    recipes = await db.recipe.find_many(
+        where={
+            "OR": [
+                {"title": {"contains": q}},
+                {"description": {"contains": q}}
+            ]
+        },
+        include={"steps": True, "ingredients": {"include": {"ingredient": True}}}
+    )
+    return recipes
+
+@app.get("/recipes/{recipe_id}")
+async def get_recipe(recipe_id: str):
+    """Get a single recipe by ID with all relationships."""
+    recipe = await db.recipe.find_unique(
+        where={"id": recipe_id},
+        include={"steps": True, "ingredients": {"include": {"ingredient": True}}}
+    )
+
+    if not recipe:
+        raise HTTPException(status_code=404, detail="Recipe not found")
+
+    return recipe
+
+@app.put("/recipes/{recipe_id}")
+async def update_recipe(recipe_id: str, data: RecipeUpdateRequest):
+    """
+    Update an existing recipe and recalculate nutrition if ingredients change.
+    """
+    # Verify recipe exists
+    existing = await db.recipe.find_unique(where={"id": recipe_id})
+    if not existing:
+        raise HTTPException(status_code=404, detail="Recipe not found")
+
+    # Start with basic fields
+    update_data = {}
+    if data.title is not None:
+        # Check for duplicate title (excluding current recipe)
+        duplicate = await db.recipe.find_first(
+            where={"title": data.title, "id": {"not": recipe_id}}
+        )
+        if duplicate:
+            raise HTTPException(status_code=409, detail="Recipe with this title already exists")
+        update_data["title"] = data.title
+
+    if data.description is not None:
+        update_data["description"] = data.description
+
+    if data.servings is not None:
+        update_data["servings"] = data.servings
+
+    # Handle steps update
+    if data.steps is not None:
+        # Delete existing steps
+        await db.recipestep.delete_many(where={"recipeId": recipe_id})
+        # Create new steps
+        for step in data.steps:
+            await db.recipestep.create(data={
+                "order": step.order,
+                "instruction": step.instruction,
+                "recipeId": recipe_id
+            })
+
+    # Handle ingredients update and recalculate nutrition
+    if data.ingredients is not None:
+        # Delete existing ingredient relationships
+        await db.recipeingredient.delete_many(where={"recipeId": recipe_id})
+
+        # Fetch ingredient data and calculate nutrition
+        ingredients_with_data = []
+        for item in data.ingredients:
+            ing = await db.ingredient.find_unique(where={"id": item.ingredientId})
+            if not ing:
+                raise HTTPException(status_code=404, detail=f"Ingredient with ID {item.ingredientId} not found")
+            ingredients_with_data.append({
+                "ingredient": ing,
+                "quantity": item.quantity,
+                "unit": item.unit
+            })
+
+        # Calculate nutrition
+        totals = NutritionService.calculate_recipe_totals(ingredients_with_data)
+        update_data["totalCalories"] = totals["calories"]
+        update_data["totalProtein"] = totals["protein"]
+        update_data["totalCarbs"] = totals["carbs"]
+        update_data["totalFat"] = totals["fat"]
+
+        # Create new ingredient relationships
+        for item in data.ingredients:
+            await db.recipeingredient.create(data={
+                "quantity": item.quantity,
+                "unit": item.unit,
+                "recipeId": recipe_id,
+                "ingredientId": item.ingredientId
+            })
+
+    # Update recipe
+    recipe = await db.recipe.update(
+        where={"id": recipe_id},
+        data=update_data
+    )
+
+    # Return complete recipe
+    return await db.recipe.find_unique(
+        where={"id": recipe_id},
+        include={"steps": True, "ingredients": {"include": {"ingredient": True}}}
+    )
+
+@app.delete("/recipes/{recipe_id}")
+async def delete_recipe(recipe_id: str):
+    """
+    Delete a recipe. Steps and ingredients are cascade deleted.
+    """
+    # Verify recipe exists
+    recipe = await db.recipe.find_unique(where={"id": recipe_id})
+    if not recipe:
+        raise HTTPException(status_code=404, detail="Recipe not found")
+
+    # Delete recipe (cascade will handle steps and ingredients)
+    await db.recipe.delete(where={"id": recipe_id})
+
+    return {"message": "Recipe deleted successfully", "id": recipe_id}
 
 @app.post("/recipes/ai-generate")
 async def generate_recipe(data: dict):
-    ai = AIService()
-    prompt = data.get('prompt')
-    recipe = await ai.generate_recipe_from_prompt(prompt)
-    return recipe
+    """
+    Generate recipe with AI and return in ManualForm-compatible format
+    """
+    try:
+        ai = AIService()
+        prompt = data.get('prompt', '')
+
+        if not prompt:
+            raise HTTPException(status_code=400, detail="Prompt is required")
+
+        # Generate recipe with matched ingredients
+        recipe = await ai.generate_recipe_from_prompt(prompt)
+
+        return recipe
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"AI generation error: {e}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"AI generation failed: {str(e)}")
 
 @app.get("/lists")
 async def get_lists():

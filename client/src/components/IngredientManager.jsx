@@ -4,6 +4,8 @@ const IngredientManager = () => {
     const [searchQuery, setSearchQuery] = useState('');
     const [results, setResults] = useState([]);
     const [isAddingCustom, setIsAddingCustom] = useState(false);
+    const [searchMode, setSearchMode] = useState('local'); // 'local' or 'usda'
+    const [usdaResults, setUsdaResults] = useState([]);
 
     React.useEffect(() => {
         fetch('http://localhost:8000/ingredients')
@@ -13,17 +15,52 @@ const IngredientManager = () => {
 
     const handleSearch = async () => {
         if (!searchQuery) {
-            const res = await fetch('http://localhost:8000/ingredients');
-            const data = await res.json();
-            setResults(data);
+            if (searchMode === 'local') {
+                const res = await fetch('http://localhost:8000/ingredients');
+                const data = await res.json();
+                setResults(data);
+            } else {
+                setUsdaResults([]);
+            }
             return;
         }
         try {
-            const response = await fetch(`http://localhost:8000/ingredients/search?q=${searchQuery}`);
-            const data = await response.json();
-            setResults(data);
+            if (searchMode === 'local') {
+                const response = await fetch(`http://localhost:8000/ingredients/search?q=${searchQuery}`);
+                const data = await response.json();
+                setResults(data);
+            } else {
+                const response = await fetch(`http://localhost:8000/ingredients/usda/search?q=${searchQuery}&limit=25`);
+                const data = await response.json();
+                setUsdaResults(data.results || []);
+            }
         } catch (e) {
             console.error("Search failed", e);
+        }
+    };
+
+    const handleUSDAImport = async (fdcId) => {
+        try {
+            const response = await fetch(`http://localhost:8000/ingredients/usda/import/${fdcId}`, {
+                method: 'POST'
+            });
+
+            if (response.ok) {
+                alert('Ingredient imported successfully!');
+                // Switch back to local mode and refresh
+                setSearchMode('local');
+                const res = await fetch('http://localhost:8000/ingredients');
+                const data = await res.json();
+                setResults(data);
+            } else if (response.status === 409) {
+                const data = await response.json();
+                alert(data.detail || 'Ingredient already exists');
+            } else {
+                alert('Failed to import ingredient');
+            }
+        } catch (e) {
+            console.error("Import failed", e);
+            alert('Failed to import ingredient');
         }
     };
 
@@ -39,10 +76,33 @@ const IngredientManager = () => {
                 </button>
             </div>
 
+            <div className="glass-panel p-2 flex space-x-2 w-fit mb-6 bg-white/20">
+                <button
+                    onClick={() => {
+                        setSearchMode('local');
+                        setUsdaResults([]);
+                        setSearchQuery('');
+                    }}
+                    className={`px-6 py-2 rounded-xl font-bold transition-all ${searchMode === 'local' ? 'bg-sage-600 text-white shadow-lg shadow-sage-900/10' : 'text-sage-400'}`}
+                >
+                    My Library
+                </button>
+                <button
+                    onClick={() => {
+                        setSearchMode('usda');
+                        setResults([]);
+                        setSearchQuery('');
+                    }}
+                    className={`px-6 py-2 rounded-xl font-bold transition-all ${searchMode === 'usda' ? 'bg-sage-600 text-white shadow-lg shadow-sage-900/10' : 'text-sage-400'}`}
+                >
+                    USDA Database
+                </button>
+            </div>
+
             <div className="glass-panel p-6 mb-8 flex gap-4 bg-white/40">
                 <input
                     type="text"
-                    placeholder="Search natural ingredients..."
+                    placeholder={searchMode === 'local' ? 'Search natural ingredients...' : 'Search USDA FoodData Central...'}
                     className="glass-input mb-0 flex-1"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
@@ -93,9 +153,15 @@ const IngredientManager = () => {
             )}
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {results.map((ing, idx) => (
-                    <IngredientCard key={idx} ingredient={ing} />
-                ))}
+                {searchMode === 'local' ? (
+                    results.map((ing, idx) => (
+                        <IngredientCard key={idx} ingredient={ing} />
+                    ))
+                ) : (
+                    usdaResults.map((food, idx) => (
+                        <USDAFoodCard key={idx} food={food} onImport={handleUSDAImport} />
+                    ))
+                )}
             </div>
         </div>
     );
@@ -127,6 +193,36 @@ const IngredientCard = ({ ingredient }) => (
         </div>
         <button className="w-full py-3 text-[10px] font-black text-sage-400 hover:text-sage-600 transition-colors uppercase tracking-[0.2em] border border-sage-100 rounded-xl hover:bg-white/80">
             View Purchase Info
+        </button>
+    </div>
+);
+
+const USDAFoodCard = ({ food, onImport }) => (
+    <div className="glass-panel p-6 hover:bg-white/60 transition-all group bg-white/30">
+        <div className="flex justify-between items-start mb-6">
+            <div className="flex-1 pr-2">
+                <h3 className="text-lg font-black text-sage-800 leading-tight mb-1">{food.description}</h3>
+                <div className="flex gap-2 items-center">
+                    <span className="text-[9px] uppercase font-black text-sage-400 tracking-widest">{food.dataType}</span>
+                    <span className="text-[9px] text-sage-300">•</span>
+                    <span className="text-[9px] text-sage-500">FDC ID: {food.fdcId}</span>
+                </div>
+            </div>
+            <div className="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center text-blue-600 font-black text-xs shadow-inner flex-shrink-0">
+                USDA
+            </div>
+        </div>
+        <div className="grid grid-cols-2 gap-3 text-xs text-sage-500 mb-6 p-4 bg-sage-50/50 rounded-2xl">
+            <div className="flex justify-between border-b border-sage-100/50 pb-2"><span>Cals</span> <span className="text-sage-800 font-bold">{Math.round(food.calories)}</span></div>
+            <div className="flex justify-between border-b border-sage-100/50 pb-2"><span>Prot</span> <span className="text-sage-800 font-bold">{food.protein?.toFixed(1) || 0}g</span></div>
+            <div className="flex justify-between border-b border-sage-100/50 pb-2"><span>Carb</span> <span className="text-sage-800 font-bold">{food.carbohydrates?.toFixed(1) || 0}g</span></div>
+            <div className="flex justify-between border-b border-sage-100/50 pb-2"><span>Fat</span> <span className="text-sage-800 font-bold">{food.fats?.toFixed(1) || 0}g</span></div>
+        </div>
+        <button
+            onClick={() => onImport(food.fdcId)}
+            className="w-full py-3 text-[10px] font-black text-white bg-sage-600 hover:bg-sage-700 transition-all uppercase tracking-[0.2em] rounded-xl shadow-lg shadow-sage-900/10"
+        >
+            Import to Library
         </button>
     </div>
 );
