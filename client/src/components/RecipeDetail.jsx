@@ -98,12 +98,15 @@ const RecipeDetail = ({ recipe, onBack, onEdit }) => {
                     <div className="glass-panel p-8 bg-white/40">
                         <h2 className="text-xs font-black text-sage-400 uppercase tracking-[0.2em] mb-6">Ingredients</h2>
                         <ul className="space-y-3">
-                            {recipe.ingredients.map((ing, idx) => (
-                                <li key={idx} className="flex justify-between items-center p-4 bg-sage-50/50 rounded-2xl border border-sage-100/50 group hover:bg-white transition-colors">
-                                    <span className="text-sage-800 font-bold">{ing.name}</span>
-                                    <span className="font-black text-sage-600 bg-white/60 px-3 py-1 rounded-lg text-xs">{ing.quantity} {ing.unit}</span>
-                                </li>
-                            ))}
+                            {recipe.ingredients.map((ing, idx) => {
+                                const name = ing.ingredient?.name || ing.name;
+                                return (
+                                    <li key={idx} className="flex justify-between items-center p-4 bg-sage-50/50 rounded-2xl border border-sage-100/50 group hover:bg-white transition-colors">
+                                        <span className="text-sage-800 font-bold">{name}</span>
+                                        <span className="font-black text-sage-600 bg-white/60 px-3 py-1 rounded-lg text-xs">{ing.quantity} {ing.unit}</span>
+                                    </li>
+                                );
+                            })}
                         </ul>
                     </div>
                 </div>
