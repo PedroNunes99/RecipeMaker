@@ -1,18 +1,56 @@
 import React from 'react';
 
-const RecipeDetail = ({ recipe, onBack }) => {
+const RecipeDetail = ({ recipe, onBack, onEdit }) => {
     if (!recipe) return null;
+
+    const handleDelete = async (recipeId) => {
+        if (!window.confirm('Are you sure you want to delete this recipe? This action cannot be undone.')) {
+            return;
+        }
+
+        try {
+            const response = await fetch(`http://localhost:8000/recipes/${recipeId}`, {
+                method: 'DELETE'
+            });
+
+            if (response.ok) {
+                onBack();
+                window.location.reload();
+            } else {
+                alert('Failed to delete recipe. Please try again.');
+            }
+        } catch (error) {
+            console.error('Delete failed:', error);
+            alert('An error occurred while deleting the recipe.');
+        }
+    };
 
     return (
         <div className="animate-in fade-in zoom-in-95 duration-500">
-            <div className="flex items-center space-x-4 mb-8">
-                <button
-                    onClick={onBack}
-                    className="p-3 hover:bg-sage-100 rounded-full transition-all group shadow-sm bg-white"
-                >
-                    <svg className="w-6 h-6 text-sage-600 transform group-hover:-translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
-                </button>
-                <h1 className="text-4xl font-black text-sage-900">{recipe.title}</h1>
+            <div className="flex items-center justify-between mb-8">
+                <div className="flex items-center space-x-4">
+                    <button
+                        onClick={onBack}
+                        className="p-3 hover:bg-sage-100 rounded-full transition-all group shadow-sm bg-white"
+                    >
+                        <svg className="w-6 h-6 text-sage-600 transform group-hover:-translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+                    </button>
+                    <h1 className="text-4xl font-black text-sage-900">{recipe.title}</h1>
+                </div>
+                <div className="flex space-x-3">
+                    <button
+                        onClick={() => onEdit(recipe)}
+                        className="px-6 py-3 bg-sage-600 text-white rounded-xl font-bold hover:bg-sage-700 transition-all shadow-lg hover:shadow-xl"
+                    >
+                        ✏️ Edit
+                    </button>
+                    <button
+                        onClick={() => handleDelete(recipe.id)}
+                        className="px-6 py-3 bg-red-500 text-white rounded-xl font-bold hover:bg-red-600 transition-all shadow-lg hover:shadow-xl"
+                    >
+                        🗑️ Delete
+                    </button>
+                </div>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -44,10 +82,10 @@ const RecipeDetail = ({ recipe, onBack }) => {
                     <div className="glass-panel p-8 border-l-8 border-l-sage-500 bg-white/40">
                         <h2 className="text-xs font-black text-sage-400 uppercase tracking-[0.2em] mb-6">Nutritional Profile</h2>
                         <div className="grid grid-cols-2 gap-4 mb-10">
-                            <NutrientStat label="Calories" value={recipe.calories} unit="kcal" />
-                            <NutrientStat label="Protein" value={recipe.protein} unit="g" />
-                            <NutrientStat label="Carbs" value={recipe.carbs} unit="g" />
-                            <NutrientStat label="Fat" value={recipe.fat} unit="g" />
+                            <NutrientStat label="Calories" value={Math.round(recipe.totalCalories || 0)} unit="kcal" />
+                            <NutrientStat label="Protein" value={Math.round(recipe.totalProtein || 0)} unit="g" />
+                            <NutrientStat label="Carbs" value={Math.round(recipe.totalCarbs || 0)} unit="g" />
+                            <NutrientStat label="Fat" value={Math.round(recipe.totalFat || 0)} unit="g" />
                         </div>
 
                         <div className="space-y-6 bg-sage-50/50 p-6 rounded-3xl border border-sage-100">
