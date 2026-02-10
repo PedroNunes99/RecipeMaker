@@ -377,7 +377,8 @@ const ManualForm = ({ existingRecipe = null, onComplete = null }) => {
   const handleSubmit = async () => {
     setError(null);
     try {
-      const isEditing = !!existingRecipe;
+      // Only treat as editing if the recipe has a DB id (AI-generated recipes don't)
+      const isEditing = existingRecipe?.id ? true : false;
       const url = isEditing
         ? `http://localhost:8000/recipes/${existingRecipe.id}`
         : 'http://localhost:8000/recipes/manual';
@@ -593,7 +594,7 @@ const ManualForm = ({ existingRecipe = null, onComplete = null }) => {
           <div className="flex justify-between pt-4">
             <button onClick={prevStep} className="px-6 py-2 text-sage-400 font-bold hover:text-sage-600 transition-colors">Back</button>
             <button onClick={handleSubmit} disabled={formData.steps.length === 0} className="btn-primary bg-gradient-to-r from-sage-500 to-sage-600">
-              {existingRecipe ? 'Update Recipe 🌿' : 'Save Premium Recipe 🌿'}
+              {existingRecipe?.id ? 'Update Recipe 🌿' : 'Save Recipe 🌿'}
             </button>
           </div>
           {error && (
