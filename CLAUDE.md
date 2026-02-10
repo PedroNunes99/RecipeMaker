@@ -222,6 +222,16 @@ gh pr create --title "Feature: description" --body "Details..."
 **Decision**: Use Vitest + React Testing Library
 **Reason**: Fast, modern, good TypeScript support, Vite-native
 
+### 2026-02-09: Agent Execution Mode - Advisory vs Autonomous
+**Decision**: Agents operate in "Advisory Mode" (provide instructions, don't execute)
+**Reason**:
+- Ollama doesn't natively support tool calling like Claude API
+- Safer during development - human reviews before execution
+- Perfect hybrid: AI agents plan, Claude Code executes
+- Maintains control while leveraging AI for planning & code generation
+**Alternative**: Full autonomy requires Claude API or custom tool parser
+**Documentation**: See `.agent/AUTONOMOUS_MODE.md` for implementation guide
+
 ## Resources
 
 - **React Docs**: https://react.dev

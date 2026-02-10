@@ -5,6 +5,7 @@ import IngredientManager from './components/IngredientManager';
 function App() {
   const [activeTab, setActiveTab] = useState('recipes');
   const [selectedRecipe, setSelectedRecipe] = useState(null);
+  const [editingRecipe, setEditingRecipe] = useState(null);
 
   return (
     <div className="min-h-screen max-w-7xl mx-auto p-4 md:p-8">
@@ -24,6 +25,21 @@ function App() {
           <RecipeDetail
             recipe={selectedRecipe}
             onBack={() => setSelectedRecipe(null)}
+            onEdit={(recipe) => {
+              setEditingRecipe(recipe);
+              setSelectedRecipe(null);
+              setActiveTab('create');
+            }}
+          />
+        ) : editingRecipe ? (
+          <RecipeCreator
+            existingRecipe={editingRecipe}
+            onComplete={() => {
+              setEditingRecipe(null);
+              setActiveTab('recipes');
+              window.location.reload();
+            }}
+            onGenerated={(recipe) => { setSelectedRecipe(recipe); }}
           />
         ) : (
           <>
@@ -75,6 +91,7 @@ const RecipeList = ({ onSelectRecipe }) => {
             title={recipe.title}
             description={recipe.description}
             category="Saved"
+            recipe={recipe}
             onClick={() => onSelectRecipe(recipe)}
           />
         ))}
@@ -83,7 +100,7 @@ const RecipeList = ({ onSelectRecipe }) => {
   );
 };
 
-const RecipeCard = ({ title, description, category, onClick }) => (
+const RecipeCard = ({ title, description, category, onClick, recipe }) => (
   <div
     onClick={onClick}
     className="glass-panel overflow-hidden group hover:-translate-y-1 transition-all duration-300 cursor-pointer"
@@ -102,8 +119,8 @@ const RecipeCard = ({ title, description, category, onClick }) => (
       <p className="text-sage-600/80 text-sm leading-relaxed">{description}</p>
       <div className="mt-6 flex justify-between items-center border-t border-sage-100 pt-4">
         <div className="flex space-x-4 text-[10px] font-bold uppercase tracking-tighter text-sage-400">
-          <span>450 kcal</span>
-          <span>32g P</span>
+          <span>{Math.round(recipe?.totalCalories || 0)} kcal</span>
+          <span>{Math.round(recipe?.totalProtein || 0)}g P</span>
         </div>
         <button className="text-sage-600 text-sm font-black hover:text-sage-800 transition-colors">Details →</button>
       </div>
@@ -111,76 +128,116 @@ const RecipeCard = ({ title, description, category, onClick }) => (
   </div>
 );
 
-const RecipeCreator = ({ onGenerated }) => {
+const RecipeCreator = ({ onGenerated, existingRecipe = null, onComplete = null }) => {
   const [mode, setMode] = useState('manual');
   const [isGenerating, setIsGenerating] = useState(false);
+  const [generatedRecipe, setGeneratedRecipe] = useState(null);
+  const [error, setError] = useState(null);
 
   const handleGenerate = async (prompt) => {
     setIsGenerating(true);
+    setError(null);
+
     try {
       const response = await fetch('http://localhost:8000/recipes/ai-generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ prompt })
       });
+
+      if (!response.ok) {
+        throw new Error('AI generation failed');
+      }
+
       const data = await response.json();
 
-      // Transform the backend response to the frontend format if needed
-      const formattedRecipe = {
-        ...data,
-        calories: data.macros?.calories || data.nutritional_estimates?.calories,
-        protein: data.macros?.protein || data.nutritional_estimates?.protein,
-        carbs: data.macros?.carbs || data.nutritional_estimates?.carbs,
-        fat: data.macros?.fat || data.nutritional_estimates?.fat,
-      };
+      // Switch to manual mode with pre-filled data
+      setGeneratedRecipe(data);
+      setMode('manual');
 
-      onGenerated(formattedRecipe);
     } catch (e) {
       console.error("AI Generation failed", e);
+      setError("Failed to generate recipe. Please try again or check if Ollama is running.");
     } finally {
       setIsGenerating(false);
     }
   };
 
+  // Determine which recipe data to pass to ManualForm
+  const recipeForForm = generatedRecipe || existingRecipe;
+
   return (
     <div className="animate-in fade-in slide-in-from-bottom-4 duration-700">
-      <h1 className="text-4xl md:text-5xl font-extrabold mb-8">Create New Recipe</h1>
+      <h1 className="text-4xl md:text-5xl font-extrabold mb-8">
+        {existingRecipe ? 'Edit Recipe' : generatedRecipe ? 'Review & Edit AI Recipe' : 'Create New Recipe'}
+      </h1>
 
       {isGenerating ? (
         <div className="glass-panel p-20 flex flex-col items-center justify-center space-y-6">
           <div className="w-16 h-16 border-4 border-sage-500 border-t-transparent rounded-full animate-spin"></div>
           <div className="text-2xl font-black italic text-sage-600">Cultivating your recipe...</div>
           <p className="text-sage-400 animate-pulse text-center max-w-sm">
-            Balancing natural flavors and optimizing nutritional density for your well-being.
+            AI is generating your recipe with matched ingredients and nutrition data.
           </p>
         </div>
       ) : (
         <>
-          <div className="glass-panel p-2 flex space-x-2 w-fit mb-8 bg-white/20">
-            <button
-              onClick={() => setMode('manual')}
-              className={`px-6 py-2 rounded-xl font-bold transition-all ${mode === 'manual' ? 'bg-sage-600 text-white shadow-lg shadow-sage-900/10' : 'text-sage-400'}`}
-            >
-              Manual
-            </button>
-            <button
-              onClick={() => setMode('assisted')}
-              className={`px-6 py-2 rounded-xl font-bold transition-all ${mode === 'assisted' ? 'bg-sage-600 text-white shadow-lg shadow-sage-900/10' : 'text-sage-400'}`}
-            >
-              AI Assisted
-            </button>
-            <button
-              onClick={() => setMode('freestyle')}
-              className={`px-6 py-2 rounded-xl font-bold transition-all ${mode === 'freestyle' ? 'bg-sage-600 text-white shadow-lg shadow-sage-900/10' : 'text-sage-400'}`}
-            >
-              AI Freestyle
-            </button>
-          </div>
+          {/* Show mode switcher only if not editing and no generated recipe */}
+          {!existingRecipe && !generatedRecipe && (
+            <div className="glass-panel p-2 flex space-x-2 w-fit mb-8 bg-white/20">
+              <button
+                onClick={() => setMode('manual')}
+                className={`px-6 py-2 rounded-xl font-bold transition-all ${
+                  mode === 'manual'
+                    ? 'bg-sage-600 text-white shadow-lg shadow-sage-900/10'
+                    : 'text-sage-400'
+                }`}
+              >
+                Manual
+              </button>
+              <button
+                onClick={() => setMode('ai')}
+                className={`px-6 py-2 rounded-xl font-bold transition-all ${
+                  mode === 'ai'
+                    ? 'bg-sage-600 text-white shadow-lg shadow-sage-900/10'
+                    : 'text-sage-400'
+                }`}
+              >
+                AI Generate
+              </button>
+            </div>
+          )}
+
+          {/* Show error if generation failed */}
+          {error && (
+            <div className="glass-panel p-6 mb-8 bg-red-50 border border-red-200">
+              <div className="flex items-start space-x-3">
+                <span className="text-red-500 text-2xl">⚠️</span>
+                <div>
+                  <h3 className="font-bold text-red-700 mb-1">Generation Failed</h3>
+                  <p className="text-red-600 text-sm">{error}</p>
+                  <button
+                    onClick={() => {
+                      setError(null);
+                      setMode('ai');
+                    }}
+                    className="mt-3 text-red-700 underline text-sm font-bold"
+                  >
+                    Try Again
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
 
           <div className="glass-panel p-8 md:p-12">
-            {mode === 'manual' && <ManualForm />}
-            {mode === 'assisted' && <AIForm mode="assisted" onGenerate={handleGenerate} />}
-            {mode === 'freestyle' && <AIForm mode="freestyle" onGenerate={handleGenerate} />}
+            {mode === 'manual' && (
+              <ManualForm
+                existingRecipe={recipeForForm}
+                onComplete={onComplete || (() => window.location.reload())}
+              />
+            )}
+            {mode === 'ai' && <AIForm onGenerate={handleGenerate} />}
           </div>
         </>
       )}
@@ -188,7 +245,7 @@ const RecipeCreator = ({ onGenerated }) => {
   );
 };
 
-const ManualForm = () => {
+const ManualForm = ({ existingRecipe = null, onComplete = null }) => {
   const [step, setStep] = useState(1);
   const [formData, setFormData] = useState({
     title: '',
@@ -197,6 +254,54 @@ const ManualForm = () => {
     ingredients: [],
     steps: []
   });
+
+  // Initialize form data from existing recipe when editing
+  React.useEffect(() => {
+    if (existingRecipe) {
+      setFormData({
+        title: existingRecipe.title || '',
+        description: existingRecipe.description || '',
+        servings: existingRecipe.servings || 1,
+        ingredients: existingRecipe.ingredients?.map(ri => ({
+          ...ri.ingredient,
+          quantity: ri.quantity,
+          unit: ri.unit,
+          ingredientId: ri.ingredient.id
+        })) || [],
+        steps: existingRecipe.steps?.map(s => ({
+          order: s.order,
+          instruction: s.instruction
+        })) || []
+      });
+    }
+  }, [existingRecipe]);
+
+  // Calculate nutrition preview when ingredients change
+  React.useEffect(() => {
+    const calculatePreview = async () => {
+      if (formData.ingredients.length === 0) {
+        setNutritionPreview(null);
+        return;
+      }
+
+      try {
+        const response = await fetch('http://localhost:8000/recipes/calculate-nutrition', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ingredients: formData.ingredients })
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          setNutritionPreview(data);
+        }
+      } catch (e) {
+        console.error("Failed to calculate nutrition", e);
+      }
+    };
+
+    calculatePreview();
+  }, [formData.ingredients]);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState([]);
@@ -208,6 +313,7 @@ const ManualForm = () => {
 
   const [currentInstruction, setCurrentInstruction] = useState('');
   const [error, setError] = useState(null); // New error state
+  const [nutritionPreview, setNutritionPreview] = useState(null);
 
   const nextStep = () => setStep(s => s + 1);
   const prevStep = () => setStep(s => s - 1);
@@ -255,13 +361,24 @@ const ManualForm = () => {
   const handleSubmit = async () => {
     setError(null);
     try {
-      const response = await fetch('http://localhost:8000/recipes/manual', {
-        method: 'POST',
+      const isEditing = !!existingRecipe;
+      const url = isEditing
+        ? `http://localhost:8000/recipes/${existingRecipe.id}`
+        : 'http://localhost:8000/recipes/manual';
+      const method = isEditing ? 'PUT' : 'POST';
+
+      const response = await fetch(url, {
+        method: method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData)
       });
+
       if (response.ok) {
-        window.location.reload(); // Refresh to show new recipe
+        if (onComplete) {
+          onComplete(); // Call the completion callback
+        } else {
+          window.location.reload(); // Fallback: refresh to show changes
+        }
       } else if (response.status === 409) {
         setError("A recipe with this title already exists. Please choose a different title.");
       } else {
@@ -397,6 +514,30 @@ const ManualForm = () => {
             ))}
           </div>
 
+          {nutritionPreview && (
+            <div className="glass-panel p-6 bg-gradient-to-br from-sage-50 to-white animate-in fade-in slide-in-from-bottom-2 duration-300">
+              <h3 className="font-black text-sage-600 uppercase text-[10px] tracking-widest mb-4">Nutrition Preview</h3>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="text-center">
+                  <div className="text-3xl font-black text-sage-800">{Math.round(nutritionPreview.calories)}</div>
+                  <div className="text-[10px] uppercase font-bold text-sage-400 tracking-widest">Calories</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-3xl font-black text-sage-800">{Math.round(nutritionPreview.protein)}g</div>
+                  <div className="text-[10px] uppercase font-bold text-sage-400 tracking-widest">Protein</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-3xl font-black text-sage-800">{Math.round(nutritionPreview.carbs)}g</div>
+                  <div className="text-[10px] uppercase font-bold text-sage-400 tracking-widest">Carbs</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-3xl font-black text-sage-800">{Math.round(nutritionPreview.fat)}g</div>
+                  <div className="text-[10px] uppercase font-bold text-sage-400 tracking-widest">Fat</div>
+                </div>
+              </div>
+            </div>
+          )}
+
           <div className="flex justify-between pt-4">
             <button onClick={prevStep} className="px-6 py-2 text-sage-400 font-bold hover:text-sage-600 transition-colors">Back</button>
             <button onClick={nextStep} disabled={formData.ingredients.length === 0} className="btn-primary">
@@ -436,7 +577,7 @@ const ManualForm = () => {
           <div className="flex justify-between pt-4">
             <button onClick={prevStep} className="px-6 py-2 text-sage-400 font-bold hover:text-sage-600 transition-colors">Back</button>
             <button onClick={handleSubmit} disabled={formData.steps.length === 0} className="btn-primary bg-gradient-to-r from-sage-500 to-sage-600">
-              Save Premium Recipe 🌿
+              {existingRecipe ? 'Update Recipe 🌿' : 'Save Premium Recipe 🌿'}
             </button>
           </div>
           {error && (
@@ -450,32 +591,37 @@ const ManualForm = () => {
   );
 };
 
-const AIForm = ({ mode, onGenerate }) => {
+const AIForm = ({ onGenerate }) => {
   const [input, setInput] = useState('');
+
   return (
     <div className="max-w-2xl">
       <div className="mb-6">
-        <h2 className="text-2xl font-bold mb-2">
-          {mode === 'assisted' ? 'Quick Input' : 'Recipe Prompt'}
-        </h2>
+        <h2 className="text-2xl font-bold mb-2">Describe Your Recipe</h2>
         <p className="text-slate-400">
-          {mode === 'assisted'
-            ? 'Provide a list of ingredients or rough steps and our AI agent will structure it perfectly.'
-            : 'Describe the kind of recipe you want and we will generate everything from scratch.'}
+          Tell the AI what kind of recipe you want. Be specific about ingredients,
+          dietary restrictions, cuisine type, or cooking style.
         </p>
       </div>
+
       <textarea
         value={input}
         onChange={(e) => setInput(e.target.value)}
-        placeholder={mode === 'assisted' ? 'e.g. 2 chicken breasts, broccoli, soy sauce, ginger. Sear chicken, steam broccoli, mix with sauce.' : 'e.g. A quick high-protein vegetarian dinner with Mediterranean flavors under 600 calories.'}
+        placeholder="e.g. A high-protein Mediterranean dinner with chicken, under 600 calories, for 2 people"
         className="glass-input h-48 mb-6"
       ></textarea>
+
       <button
         onClick={() => onGenerate(input)}
-        className="w-full bg-gradient-to-r from-sage-500 to-sage-600 hover:from-sage-600 hover:to-sage-700 text-white font-bold py-4 rounded-2xl shadow-xl shadow-sage-900/10 transition-all transform hover:-translate-y-1"
+        disabled={!input.trim()}
+        className="w-full bg-gradient-to-r from-sage-500 to-sage-600 hover:from-sage-600 hover:to-sage-700 text-white font-bold py-4 rounded-2xl shadow-xl shadow-sage-900/10 transition-all transform hover:-translate-y-1 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
       >
-        Cultivate Premium Recipe ✨
+        Generate Recipe with AI ✨
       </button>
+
+      <div className="mt-4 text-center text-xs text-sage-400">
+        <p>Powered by local Ollama LLM - 100% private and free</p>
+      </div>
     </div>
   );
 };
