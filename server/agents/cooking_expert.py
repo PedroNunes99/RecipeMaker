@@ -1,4 +1,4 @@
-from agents.prompts import SYSTEM_PROMPT, RECIPE_SCHEMA
+from agents.prompts import SYSTEM_PROMPT, RECIPE_EXAMPLE
 from services.ollama_client import OllamaClient
 import json
 import re
@@ -32,15 +32,14 @@ class CookingExpertAgent:
             print("Ollama unavailable, using mock data")
             return await self._generate_mock_recipe(prompt)
 
-        # Build the full prompt with schema instructions
-        full_prompt = f"""
-{prompt}
+        # Build the full prompt with example-based instructions
+        full_prompt = f"""Create a recipe for: {prompt}
 
-IMPORTANT: Respond with a valid JSON object following this exact schema:
-{json.dumps(RECIPE_SCHEMA, indent=2)}
+You MUST respond with ONLY a JSON object, no other text. Follow this exact format:
 
-Your response must be ONLY valid JSON, no explanations or markdown.
-"""
+{RECIPE_EXAMPLE}
+
+Now generate a different recipe based on the user's request above. Output ONLY valid JSON, nothing else."""
 
         # Generate recipe with Ollama
         response = await self.ollama.generate(
@@ -65,40 +64,65 @@ Your response must be ONLY valid JSON, no explanations or markdown.
 
     def _extract_json(self, text: str) -> Dict[str, Any]:
         """
-        Extract JSON from LLM response (handles markdown code blocks)
+        Extract JSON from LLM response (handles markdown code blocks, schema wrapping)
 
         Args:
             text: Raw LLM response
 
         Returns:
-            Parsed JSON dict
+            Parsed JSON dict with title, ingredients, steps, macros
 
         Raises:
             ValueError: If no valid JSON found
         """
+        text = text.strip()
+
         # Try direct JSON parse first
         try:
-            return json.loads(text)
-        except:
+            parsed = json.loads(text)
+            return self._unwrap_schema(parsed)
+        except (json.JSONDecodeError, ValueError):
             pass
 
         # Try to extract from markdown code block
         json_match = re.search(r'```(?:json)?\s*(\{.*?\})\s*```', text, re.DOTALL)
         if json_match:
             try:
-                return json.loads(json_match.group(1))
-            except:
+                parsed = json.loads(json_match.group(1))
+                return self._unwrap_schema(parsed)
+            except (json.JSONDecodeError, ValueError):
                 pass
 
-        # Try to find JSON object in text
+        # Try to find JSON object in text (use lazy matching to avoid nested issues)
+        json_match = re.search(r'\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}', text, re.DOTALL)
+        if json_match:
+            try:
+                parsed = json.loads(json_match.group(0))
+                return self._unwrap_schema(parsed)
+            except (json.JSONDecodeError, ValueError):
+                pass
+
+        # Last resort: try greedy match
         json_match = re.search(r'\{.*\}', text, re.DOTALL)
         if json_match:
             try:
-                return json.loads(json_match.group(0))
-            except:
+                parsed = json.loads(json_match.group(0))
+                return self._unwrap_schema(parsed)
+            except (json.JSONDecodeError, ValueError):
                 pass
 
         raise ValueError("No valid JSON found in response")
+
+    def _unwrap_schema(self, data: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        If the LLM wrapped recipe data inside a JSON Schema structure,
+        extract the actual values from the 'properties' field.
+        """
+        if "properties" in data and "title" not in data and isinstance(data["properties"], dict):
+            props = data["properties"]
+            if "title" in props:
+                return props
+        return data
 
     async def _generate_mock_recipe(self, prompt: str) -> Dict[str, Any]:
         """

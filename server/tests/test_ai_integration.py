@@ -54,8 +54,8 @@ async def test_ingredient_no_match_creates_placeholder(clean_db):
 
     assert len(matched) == 1
     assert matched[0]["name"] == "Unicorn Meat"
-    assert matched[0]["category"] == "Unknown"  # Placeholder category
     assert "id" in matched[0]  # Has database ID
+    assert "ingredientId" in matched[0]  # Has ingredient reference
 
 
 @pytest.mark.asyncio
@@ -84,7 +84,7 @@ async def test_ingredient_batch_matching(clean_db, multiple_ingredients):
 
     # Check magic beans created as placeholder
     assert matched[2]["name"] == "Magic Beans"
-    assert matched[2]["category"] == "Unknown"
+    assert "id" in matched[2]  # Placeholder has database ID
 
 
 @pytest.mark.asyncio

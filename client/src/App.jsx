@@ -255,19 +255,35 @@ const ManualForm = ({ existingRecipe = null, onComplete = null }) => {
     steps: []
   });
 
-  // Initialize form data from existing recipe when editing
+  // Initialize form data from existing recipe when editing or AI pre-fill
   React.useEffect(() => {
     if (existingRecipe) {
       setFormData({
         title: existingRecipe.title || '',
         description: existingRecipe.description || '',
         servings: existingRecipe.servings || 1,
-        ingredients: existingRecipe.ingredients?.map(ri => ({
-          ...ri.ingredient,
-          quantity: ri.quantity,
-          unit: ri.unit,
-          ingredientId: ri.ingredient.id
-        })) || [],
+        ingredients: existingRecipe.ingredients?.map(ri => {
+          // Handle both DB format (nested ri.ingredient) and AI format (flat object)
+          if (ri.ingredient) {
+            return {
+              ...ri.ingredient,
+              quantity: ri.quantity,
+              unit: ri.unit,
+              ingredientId: ri.ingredient.id
+            };
+          }
+          return {
+            id: ri.id,
+            name: ri.name,
+            calories: ri.calories,
+            protein: ri.protein,
+            carbohydrates: ri.carbohydrates,
+            fats: ri.fats,
+            quantity: ri.quantity,
+            unit: ri.unit,
+            ingredientId: ri.ingredientId || ri.id
+          };
+        }) || [],
         steps: existingRecipe.steps?.map(s => ({
           order: s.order,
           instruction: s.instruction
