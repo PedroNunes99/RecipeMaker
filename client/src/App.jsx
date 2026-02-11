@@ -106,8 +106,20 @@ const RecipeCard = ({ title, description, category, onClick, recipe }) => (
     className="glass-panel overflow-hidden group hover:-translate-y-1 transition-all duration-300 cursor-pointer"
   >
     <div className="h-48 bg-gradient-to-br from-sage-100 to-sage-200 flex items-center justify-center relative overflow-hidden">
-      <div className="absolute inset-0 bg-sage-600/5 group-hover:bg-sage-600/10 transition-colors"></div>
-      <div className="text-sage-300 font-bold italic text-4xl opacity-30 uppercase tracking-widest">Recipe</div>
+      {recipe?.imageUrl ? (
+        <img
+          src={recipe.imageUrl}
+          alt={title}
+          className="w-full h-full object-cover absolute inset-0"
+          loading="lazy"
+          onError={(e) => { e.target.style.display = 'none'; }}
+        />
+      ) : (
+        <>
+          <div className="absolute inset-0 bg-sage-600/5 group-hover:bg-sage-600/10 transition-colors"></div>
+          <div className="text-sage-300 font-bold italic text-4xl opacity-30 uppercase tracking-widest">Recipe</div>
+        </>
+      )}
     </div>
     <div className="p-6">
       <div className="flex justify-between items-start mb-2">
@@ -286,7 +298,8 @@ const ManualForm = ({ existingRecipe = null, onComplete = null }) => {
         }) || [],
         steps: existingRecipe.steps?.map(s => ({
           order: s.order,
-          instruction: s.instruction
+          instruction: s.instruction,
+          notes: s.notes || null
         })) || []
       });
     }
@@ -328,7 +341,8 @@ const ManualForm = ({ existingRecipe = null, onComplete = null }) => {
   const [selectedIngredient, setSelectedIngredient] = useState(null);
 
   const [currentInstruction, setCurrentInstruction] = useState('');
-  const [error, setError] = useState(null); // New error state
+  const [currentNotes, setCurrentNotes] = useState('');
+  const [error, setError] = useState(null);
   const [nutritionPreview, setNutritionPreview] = useState(null);
 
   const nextStep = () => setStep(s => s + 1);
@@ -368,10 +382,12 @@ const ManualForm = ({ existingRecipe = null, onComplete = null }) => {
       ...formData,
       steps: [...formData.steps, {
         order: formData.steps.length + 1,
-        instruction: currentInstruction
+        instruction: currentInstruction,
+        notes: currentNotes || null
       }]
     });
     setCurrentInstruction('');
+    setCurrentNotes('');
   };
 
   const handleSubmit = async () => {
@@ -573,7 +589,13 @@ const ManualForm = ({ existingRecipe = null, onComplete = null }) => {
               value={currentInstruction}
               onChange={(e) => setCurrentInstruction(e.target.value)}
               placeholder="Describe this step..."
-              className="glass-input h-24 mb-4"
+              className="glass-input h-24 mb-3"
+            ></textarea>
+            <textarea
+              value={currentNotes}
+              onChange={(e) => setCurrentNotes(e.target.value)}
+              placeholder="Optional: Add a tip or note for this step..."
+              className="glass-input h-16 mb-4 text-sm"
             ></textarea>
             <div className="flex justify-end">
               <button onClick={addStep} className="btn-primary">Add Step</button>
@@ -586,7 +608,14 @@ const ManualForm = ({ existingRecipe = null, onComplete = null }) => {
                 <div className="w-10 h-10 rounded-full bg-sage-100 text-sage-600 flex items-center justify-center font-black flex-shrink-0 shadow-inner">
                   {s.order}
                 </div>
-                <p className="text-sage-800 py-2">{s.instruction}</p>
+                <div className="flex-1">
+                  <p className="text-sage-800 py-2">{s.instruction}</p>
+                  {s.notes && (
+                    <p className="text-sage-500 text-sm italic pl-2 border-l-2 border-sage-200">
+                      Tip: {s.notes}
+                    </p>
+                  )}
+                </div>
               </div>
             ))}
           </div>

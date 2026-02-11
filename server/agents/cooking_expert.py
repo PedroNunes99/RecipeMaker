@@ -144,9 +144,9 @@ Now generate a different recipe based on the user's request above. Output ONLY v
                 {"name": "Broccoli", "quantity": 200, "unit": "g", "category": "Vegetable"}
             ],
             "steps": [
-                {"order": 1, "instruction": "Preheat pan with olive oil on medium heat"},
-                {"order": 2, "instruction": "Season chicken and cook for 6-7 minutes per side"},
-                {"order": 3, "instruction": "Steam broccoli until tender"}
+                {"order": 1, "instruction": "Preheat pan with olive oil on medium heat", "notes": "Use a non-stick pan for best results."},
+                {"order": 2, "instruction": "Season chicken and cook for 6-7 minutes per side", "notes": "Internal temperature should reach 165F (74C)."},
+                {"order": 3, "instruction": "Steam broccoli until tender", "notes": None}
             ],
             "macros": {
                 "calories": 450,

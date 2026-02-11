@@ -24,9 +24,9 @@ RECIPE_EXAMPLE = """{
     {"name": "Salt", "quantity": 5, "unit": "g"}
   ],
   "steps": [
-    {"order": 1, "instruction": "Season chicken breast with salt and olive oil."},
-    {"order": 2, "instruction": "Grill chicken for 6-7 minutes per side until cooked through."},
-    {"order": 3, "instruction": "Slice tomatoes and arrange on a plate with the chicken."}
+    {"order": 1, "instruction": "Season chicken breast with salt and olive oil.", "notes": "Let the chicken rest at room temperature for 10 minutes before grilling."},
+    {"order": 2, "instruction": "Grill chicken for 6-7 minutes per side until cooked through.", "notes": "Internal temperature should reach 165F (74C)."},
+    {"order": 3, "instruction": "Slice tomatoes and arrange on a plate with the chicken.", "notes": null}
   ],
   "macros": {
     "calories": 450,

@@ -57,20 +57,60 @@ const RecipeDetail = ({ recipe, onBack, onEdit }) => {
                 {/* Main Content */}
                 <div className="lg:col-span-2 space-y-8">
                     <div className="glass-panel overflow-hidden bg-white/40">
-                        <div className="h-96 bg-gradient-to-br from-sage-100 to-sage-200 flex items-center justify-center relative">
-                            <span className="text-sage-300 font-black text-6xl italic opacity-30">PREMIUM KITCHEN</span>
-                        </div>
+                        {recipe.imageUrl ? (
+                            <div className="h-96 relative overflow-hidden">
+                                <img
+                                    src={recipe.imageUrl}
+                                    alt={recipe.title}
+                                    className="w-full h-full object-cover"
+                                    onError={(e) => {
+                                        e.target.style.display = 'none';
+                                        e.target.nextSibling.style.display = 'flex';
+                                    }}
+                                />
+                                <div className="h-full bg-gradient-to-br from-sage-100 to-sage-200 items-center justify-center hidden absolute inset-0">
+                                    <span className="text-sage-300 font-black text-6xl italic opacity-30">PREMIUM KITCHEN</span>
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="h-96 bg-gradient-to-br from-sage-100 to-sage-200 flex items-center justify-center relative">
+                                <span className="text-sage-300 font-black text-6xl italic opacity-30">PREMIUM KITCHEN</span>
+                            </div>
+                        )}
                     </div>
 
                     <div className="glass-panel p-8 bg-white/40">
                         <h2 className="text-xs font-black text-sage-400 uppercase tracking-[0.2em] mb-8">Instructions</h2>
-                        <div className="space-y-6">
+                        <div className="space-y-8">
                             {recipe.steps.map((step, idx) => (
-                                <div key={idx} className="flex space-x-6 group">
-                                    <div className="flex-shrink-0 w-10 h-10 rounded-2xl bg-sage-600 text-white flex items-center justify-center font-black shadow-lg shadow-sage-900/10 transform transition-transform group-hover:scale-110">
-                                        {idx + 1}
+                                <div key={idx} className="group">
+                                    <div className="flex space-x-6">
+                                        <div className="flex-shrink-0 w-10 h-10 rounded-2xl bg-sage-600 text-white flex items-center justify-center font-black shadow-lg shadow-sage-900/10 transform transition-transform group-hover:scale-110">
+                                            {idx + 1}
+                                        </div>
+                                        <div className="flex-1">
+                                            <p className="text-sage-700 leading-relaxed pt-2 text-lg">{step.instruction}</p>
+
+                                            {step.notes && (
+                                                <div className="mt-3 p-3 bg-sage-50/80 rounded-xl border border-sage-100 text-sm text-sage-600 italic">
+                                                    <span className="font-bold not-italic text-sage-500">Tip: </span>
+                                                    {step.notes}
+                                                </div>
+                                            )}
+
+                                            {step.photoUrl && (
+                                                <div className="mt-4 rounded-2xl overflow-hidden shadow-md">
+                                                    <img
+                                                        src={step.photoUrl}
+                                                        alt={`Step ${idx + 1}`}
+                                                        className="w-full h-48 object-cover"
+                                                        loading="lazy"
+                                                        onError={(e) => { e.target.style.display = 'none'; }}
+                                                    />
+                                                </div>
+                                            )}
+                                        </div>
                                     </div>
-                                    <p className="text-sage-700 leading-relaxed pt-2 text-lg">{step.instruction}</p>
                                 </div>
                             ))}
                         </div>

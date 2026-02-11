@@ -5,6 +5,7 @@ from services.nutrition_service import NutritionService
 from services.ai_service import AIService
 from services.ingredient_service import IngredientService
 from services.usda_service import USDAService
+from services.image_service import ImageService
 from models.recipe_models import RecipeCreateRequest, RecipeUpdateRequest
 import os
 from dotenv import load_dotenv
@@ -168,7 +169,14 @@ async def create_recipe_manual(data: RecipeCreateRequest):
     # Calculate nutrition using existing NutritionService
     totals = NutritionService.calculate_recipe_totals(ingredients_with_data)
 
-    # Create recipe WITH calculated nutrition
+    # Generate image URLs
+    image_urls = ImageService.generate_all_image_urls(
+        title=data.title,
+        description=data.description or "",
+        steps=[{"order": s.order, "instruction": s.instruction} for s in data.steps]
+    )
+
+    # Create recipe WITH calculated nutrition and hero image
     recipe_data = {
         "title": data.title,
         "description": data.description,
@@ -177,15 +185,18 @@ async def create_recipe_manual(data: RecipeCreateRequest):
         "totalProtein": totals["protein"],
         "totalCarbs": totals["carbs"],
         "totalFat": totals["fat"],
+        "imageUrl": image_urls["recipe_image_url"],
     }
 
     recipe = await db.recipe.create(data=recipe_data)
 
-    # Create steps
-    for step in data.steps:
+    # Create steps with notes and generated images
+    for i, step in enumerate(data.steps):
         await db.recipestep.create(data={
             "order": step.order,
             "instruction": step.instruction,
+            "notes": step.notes,
+            "photoUrl": image_urls["step_image_urls"][i],
             "recipeId": recipe.id
         })
 
@@ -257,15 +268,29 @@ async def update_recipe(recipe_id: str, data: RecipeUpdateRequest):
     if data.servings is not None:
         update_data["servings"] = data.servings
 
+    # Regenerate hero image if title or description changed
+    if data.title is not None or data.description is not None:
+        new_title = data.title or existing.title
+        new_desc = data.description or existing.description or ""
+        update_data["imageUrl"] = ImageService.generate_recipe_image_url(new_title, new_desc)
+
     # Handle steps update
     if data.steps is not None:
         # Delete existing steps
         await db.recipestep.delete_many(where={"recipeId": recipe_id})
-        # Create new steps
-        for step in data.steps:
+        # Generate step images
+        current_title = data.title or existing.title
+        step_image_urls = [
+            ImageService.generate_step_image_url(s.instruction, current_title, s.order)
+            for s in data.steps
+        ]
+        # Create new steps with notes and images
+        for i, step in enumerate(data.steps):
             await db.recipestep.create(data={
                 "order": step.order,
                 "instruction": step.instruction,
+                "notes": step.notes,
+                "photoUrl": step_image_urls[i],
                 "recipeId": recipe_id
             })
 

@@ -32,14 +32,24 @@ class AIService:
                 raw_recipe.get("ingredients", [])
             )
 
-            # 3. Build response in ManualForm format
+            # 3. Normalize steps to always include notes
+            raw_steps = raw_recipe.get("steps", [])
+            normalized_steps = [
+                {
+                    "order": s.get("order", i + 1),
+                    "instruction": s.get("instruction", ""),
+                    "notes": s.get("notes", None)
+                }
+                for i, s in enumerate(raw_steps)
+            ]
+
+            # 4. Build response in ManualForm format
             recipe_for_form = {
                 "title": raw_recipe.get("title", ""),
                 "description": raw_recipe.get("description", ""),
                 "servings": raw_recipe.get("servings", 1),
-                "ingredients": matched_ingredients,  # Full ingredient objects with IDs
-                "steps": raw_recipe.get("steps", []),
-                # Include macro data for display (optional)
+                "ingredients": matched_ingredients,
+                "steps": normalized_steps,
                 "macros": raw_recipe.get("macros", {})
             }
 
