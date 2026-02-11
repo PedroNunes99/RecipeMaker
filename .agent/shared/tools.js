@@ -1,10 +1,9 @@
-import Anthropic from '@anthropic-ai/sdk';
 import { readFile, writeFile, execCommand, Logger } from './utils.js';
 
 const logger = new Logger('Tools');
 
 /**
- * Tool definitions for Claude API
+ * Tool definitions for agent runtime.
  */
 export const toolDefinitions = [
   {
@@ -153,25 +152,3 @@ export async function processToolCalls(content) {
   return results;
 }
 
-/**
- * Create a Claude client with tools
- */
-export function createClaudeClient(apiKey) {
-  return new Anthropic({ apiKey });
-}
-
-/**
- * Make a Claude API call with tool support
- */
-export async function callClaude(client, config, messages, systemPrompt) {
-  const response = await client.messages.create({
-    model: config.model,
-    max_tokens: config.maxTokens,
-    temperature: config.temperature,
-    system: systemPrompt,
-    messages,
-    tools: toolDefinitions
-  });
-
-  return response;
-}

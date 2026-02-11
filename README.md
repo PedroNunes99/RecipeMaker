@@ -25,7 +25,7 @@ A modern, AI-powered recipe management application with an autonomous multi-agen
 - SQLite database
 
 ### AI/ML
-- Claude API for recipe generation
+- Ollama (local) for recipe generation
 - Multi-agent autonomous development system
 
 ## Quick Start
@@ -96,7 +96,7 @@ This project includes an advanced multi-agent system for autonomous development!
    cd .agent
    npm install
    cp .env.example .env
-   # Add your ANTHROPIC_API_KEY to .env
+   # Configure OLLAMA_URL and LLM_MODEL in .env
    ```
 
 2. **Start the agent system**

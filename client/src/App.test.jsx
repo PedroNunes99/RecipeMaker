@@ -3,22 +3,22 @@ import { render, screen, fireEvent, waitFor } from './test-utils'
 import App from './App'
 
 // Mock fetch globally
-global.fetch = vi.fn()
+globalThis.fetch = vi.fn()
 
 describe('App', () => {
   beforeEach(() => {
     vi.clearAllMocks()
 
     // Mock recipes endpoint
-    global.fetch.mockResolvedValue({
+    globalThis.fetch.mockResolvedValue({
       ok: true,
       json: async () => ([
         {
           id: 1,
           title: 'Test Recipe 1',
           description: 'A delicious test recipe',
-          calories: 450,
-          protein: 32
+          totalCalories: 450,
+          totalProtein: 32
         }
       ])
     })
@@ -73,8 +73,13 @@ describe('App', () => {
     render(<App />)
 
     await waitFor(() => {
-      expect(global.fetch).toHaveBeenCalledWith('http://localhost:8000/recipes')
+      expect(globalThis.fetch).toHaveBeenCalledWith('http://localhost:8000/recipes')
     })
+  })
+
+  it('shows loading feedback while recipes are fetched', () => {
+    render(<App />)
+    expect(screen.getByText(/loading recipes/i)).toBeInTheDocument()
   })
 
   it('displays recipe list after loading', async () => {
@@ -87,7 +92,7 @@ describe('App', () => {
   })
 
   it('shows empty state when no recipes exist', async () => {
-    global.fetch.mockResolvedValueOnce({
+    globalThis.fetch.mockResolvedValueOnce({
       ok: true,
       json: async () => ([])
     })
@@ -101,17 +106,17 @@ describe('App', () => {
 
   it('displays recipe detail when recipe card is clicked', async () => {
     // Mock with full recipe structure including all required fields
-    global.fetch.mockResolvedValueOnce({
+    globalThis.fetch.mockResolvedValueOnce({
       ok: true,
       json: async () => ([
         {
           id: 1,
           title: 'Test Recipe 1',
           description: 'A delicious test recipe',
-          calories: 450,
-          protein: 32,
-          carbs: 40,
-          fat: 15,
+          totalCalories: 450,
+          totalProtein: 32,
+          totalCarbs: 40,
+          totalFat: 15,
           steps: [{ order: 1, instruction: 'Test step' }],
           ingredients: [{ name: 'Test ingredient', quantity: 100, unit: 'g' }]
         }
@@ -136,7 +141,7 @@ describe('App', () => {
   it('handles API errors gracefully', async () => {
     const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
 
-    global.fetch.mockRejectedValueOnce(new Error('API Error'))
+    globalThis.fetch.mockRejectedValueOnce(new Error('API Error'))
 
     render(<App />)
 

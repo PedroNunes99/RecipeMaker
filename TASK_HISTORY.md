@@ -288,3 +288,64 @@ See [NEXT_TASKS.md](.agent/NEXT_TASKS.md) for full roadmap.
 ### Notes
 
 - This task is intentionally scoped as a single PR branch per project workflow.
+
+---
+
+## 2026-02-11: Session 3 - Single-Model Refactor and Frontend UX Polish
+
+### PR Documentation
+
+- Proposed branch: `refactor/single-ai-model-and-ux-polish`
+- Scope:
+  - Remove multi-provider/multi-model abstractions and keep a single Ollama-based path.
+  - Improve frontend UX feedback, layout consistency, and flow clarity.
+  - Update tests and docs to reflect architecture and UI changes.
+
+### Architecture Changes
+
+- Simplified recipe AI model usage:
+  - `server/services/ollama_client.py` now uses a fixed recipe model (`mistral`).
+  - Removed unused model fallback env usage from `server/.env`.
+- Simplified agent runtime to Ollama-only:
+  - Refactored `.agent/shared/llm-client.js` to remove Anthropic/OpenAI branches.
+  - Refactored `.agent/index.js` startup validation to Ollama-only checks.
+  - Removed `@anthropic-ai/sdk` dependency from `.agent/package.json`.
+  - Refreshed `.agent/package-lock.json`.
+  - Removed unused Claude-specific helper exports from `.agent/shared/tools.js`.
+
+### Frontend UX/Styling Improvements
+
+- `client/src/App.jsx`:
+  - Added explicit loading and error feedback in recipe list.
+  - Reduced hard page reloads by using local refresh keys after create/edit/delete flows.
+  - Improved visual hierarchy and copy clarity in list and create flows.
+  - Improved card interaction semantics (button card) and detail CTA consistency.
+- `client/src/components/IngredientManager.jsx`:
+  - Added loading and status feedback states.
+  - Replaced alert-driven interactions with inline status messaging.
+  - Implemented functional custom ingredient creation flow.
+  - Improved layout consistency and spacing for search/import/create flows.
+- `client/src/components/RecipeDetail.jsx`:
+  - Added optional `onDeleted` callback support to improve post-delete flow control.
+
+### Testing Updates
+
+- `server/tests/test_ai_integration.py`:
+  - Added test to verify fixed-model behavior in `OllamaClient`.
+- `client/src/App.test.jsx`:
+  - Updated fixtures to canonical `total*` nutrition fields.
+  - Added loading feedback assertion.
+- `client/src/components/IngredientManager.test.jsx`:
+  - Added test coverage for custom ingredient modal save action.
+- `client/src/components/RecipeDetail.test.jsx`:
+  - Updated back button query to use accessible name.
+
+### Documentation Updates
+
+- Updated:
+  - `README.md`
+  - `GETTING_STARTED.md`
+  - `.agent/README.md`
+  - `.agent/QUICK_START.md`
+  - `CLAUDE.md`
+- Documentation now reflects single-model architecture and updated frontend behavior.

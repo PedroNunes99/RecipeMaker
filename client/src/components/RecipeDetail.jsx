@@ -1,7 +1,17 @@
 import React from 'react';
 
-const RecipeDetail = ({ recipe, onBack, onEdit }) => {
+const RecipeDetail = ({ recipe, onBack, onEdit, onDeleted }) => {
     if (!recipe) return null;
+
+    const getNutritionValue = (currentField, legacyField) => {
+        if (recipe[currentField] !== undefined && recipe[currentField] !== null) {
+            return Math.round(recipe[currentField]);
+        }
+        if (recipe[legacyField] !== undefined && recipe[legacyField] !== null) {
+            return Math.round(recipe[legacyField]);
+        }
+        return 0;
+    };
 
     const handleDelete = async (recipeId) => {
         if (!window.confirm('Are you sure you want to delete this recipe? This action cannot be undone.')) {
@@ -15,7 +25,9 @@ const RecipeDetail = ({ recipe, onBack, onEdit }) => {
 
             if (response.ok) {
                 onBack();
-                window.location.reload();
+                if (onDeleted) {
+                    onDeleted();
+                }
             } else {
                 alert('Failed to delete recipe. Please try again.');
             }
@@ -31,6 +43,7 @@ const RecipeDetail = ({ recipe, onBack, onEdit }) => {
                 <div className="flex items-center space-x-4">
                     <button
                         onClick={onBack}
+                        aria-label="Back to recipes"
                         className="p-3 hover:bg-sage-100 rounded-full transition-all group shadow-sm bg-white"
                     >
                         <svg className="w-6 h-6 text-sage-600 transform group-hover:-translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
@@ -40,12 +53,14 @@ const RecipeDetail = ({ recipe, onBack, onEdit }) => {
                 <div className="flex space-x-3">
                     <button
                         onClick={() => onEdit(recipe)}
+                        aria-label="Edit recipe"
                         className="px-6 py-3 bg-sage-600 text-white rounded-xl font-bold hover:bg-sage-700 transition-all shadow-lg hover:shadow-xl"
                     >
                         ✏️ Edit
                     </button>
                     <button
                         onClick={() => handleDelete(recipe.id)}
+                        aria-label="Delete recipe"
                         className="px-6 py-3 bg-red-500 text-white rounded-xl font-bold hover:bg-red-600 transition-all shadow-lg hover:shadow-xl"
                     >
                         🗑️ Delete
@@ -57,26 +72,9 @@ const RecipeDetail = ({ recipe, onBack, onEdit }) => {
                 {/* Main Content */}
                 <div className="lg:col-span-2 space-y-8">
                     <div className="glass-panel overflow-hidden bg-white/40">
-                        {recipe.imageUrl ? (
-                            <div className="h-96 relative overflow-hidden">
-                                <img
-                                    src={recipe.imageUrl}
-                                    alt={recipe.title}
-                                    className="w-full h-full object-cover"
-                                    onError={(e) => {
-                                        e.target.style.display = 'none';
-                                        e.target.nextSibling.style.display = 'flex';
-                                    }}
-                                />
-                                <div className="h-full bg-gradient-to-br from-sage-100 to-sage-200 items-center justify-center hidden absolute inset-0">
-                                    <span className="text-sage-300 font-black text-6xl italic opacity-30">PREMIUM KITCHEN</span>
-                                </div>
-                            </div>
-                        ) : (
-                            <div className="h-96 bg-gradient-to-br from-sage-100 to-sage-200 flex items-center justify-center relative">
-                                <span className="text-sage-300 font-black text-6xl italic opacity-30">PREMIUM KITCHEN</span>
-                            </div>
-                        )}
+                        <div className="h-96 bg-gradient-to-br from-sage-100 to-sage-200 flex items-center justify-center relative">
+                            <span className="text-sage-300 font-black text-6xl italic opacity-30">PREMIUM KITCHEN</span>
+                        </div>
                     </div>
 
                     <div className="glass-panel p-8 bg-white/40">
@@ -97,18 +95,6 @@ const RecipeDetail = ({ recipe, onBack, onEdit }) => {
                                                     {step.notes}
                                                 </div>
                                             )}
-
-                                            {step.photoUrl && (
-                                                <div className="mt-4 rounded-2xl overflow-hidden shadow-md">
-                                                    <img
-                                                        src={step.photoUrl}
-                                                        alt={`Step ${idx + 1}`}
-                                                        className="w-full h-48 object-cover"
-                                                        loading="lazy"
-                                                        onError={(e) => { e.target.style.display = 'none'; }}
-                                                    />
-                                                </div>
-                                            )}
                                         </div>
                                     </div>
                                 </div>
@@ -122,10 +108,10 @@ const RecipeDetail = ({ recipe, onBack, onEdit }) => {
                     <div className="glass-panel p-8 border-l-8 border-l-sage-500 bg-white/40">
                         <h2 className="text-xs font-black text-sage-400 uppercase tracking-[0.2em] mb-6">Nutritional Profile</h2>
                         <div className="grid grid-cols-2 gap-4 mb-10">
-                            <NutrientStat label="Calories" value={Math.round(recipe.totalCalories || 0)} unit="kcal" />
-                            <NutrientStat label="Protein" value={Math.round(recipe.totalProtein || 0)} unit="g" />
-                            <NutrientStat label="Carbs" value={Math.round(recipe.totalCarbs || 0)} unit="g" />
-                            <NutrientStat label="Fat" value={Math.round(recipe.totalFat || 0)} unit="g" />
+                            <NutrientStat label="Calories" value={getNutritionValue('totalCalories', 'calories')} unit="kcal" />
+                            <NutrientStat label="Protein" value={getNutritionValue('totalProtein', 'protein')} unit="g" />
+                            <NutrientStat label="Carbs" value={getNutritionValue('totalCarbs', 'carbs')} unit="g" />
+                            <NutrientStat label="Fat" value={getNutritionValue('totalFat', 'fat')} unit="g" />
                         </div>
 
                         <div className="space-y-6 bg-sage-50/50 p-6 rounded-3xl border border-sage-100">
