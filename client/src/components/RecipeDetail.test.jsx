@@ -55,7 +55,7 @@ describe('RecipeDetail', () => {
   it('calls onBack when back button is clicked', () => {
     render(<RecipeDetail recipe={mockRecipe} onBack={mockOnBack} onEdit={mockOnEdit} />)
 
-    const backButton = screen.getAllByRole('button')[0]
+    const backButton = screen.getByRole('button', { name: /back to recipes/i })
     fireEvent.click(backButton)
 
     expect(mockOnBack).toHaveBeenCalledTimes(1)

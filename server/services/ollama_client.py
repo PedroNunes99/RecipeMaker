@@ -1,6 +1,6 @@
 """
 Client for interacting with local Ollama LLM API.
-Provides async API calls with error handling and fallback.
+Uses a fixed model configuration for predictable behavior.
 """
 
 import httpx
@@ -10,14 +10,15 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+RECIPE_MODEL = "mistral"
+
 
 class OllamaClient:
     """Client for interacting with local Ollama LLM API"""
 
     def __init__(self):
         self.base_url = os.getenv("OLLAMA_URL", "http://localhost:11434")
-        self.model = os.getenv("OLLAMA_MODEL", "mistral")
-        self.fallback_mode = os.getenv("LLM_FALLBACK_MODE", "mock")
+        self.model = RECIPE_MODEL
         self.timeout = 120.0  # 2 minutes for recipe generation
 
     async def generate(

@@ -25,9 +25,10 @@ This system consists of specialized AI agents that work together to autonomously
    cp .env.example .env
    ```
 
-3. **Add your Anthropic API key to `.env`:**
-   ```
-   ANTHROPIC_API_KEY=your_key_here
+3. **Configure Ollama in `.env`:**
+   ```env
+   OLLAMA_URL=http://localhost:11434
+   LLM_MODEL=deepseek-coder:33b
    ```
 
 ## Usage
@@ -109,7 +110,7 @@ The orchestrator will analyze the requirements, break them down into tasks, and 
 ### Agent Configuration
 
 Edit [config/agents.json](config/agents.json) to customize:
-- Model selection (opus, sonnet, haiku)
+- Model selection (Ollama models)
 - Token limits
 - Temperature settings
 - Tools available to each agent
@@ -125,7 +126,8 @@ Edit [config/workflows.json](config/workflows.json) to:
 
 ### Environment Variables
 
-- `ANTHROPIC_API_KEY` - Your Anthropic API key (required)
+- `OLLAMA_URL` - Ollama base URL
+- `LLM_MODEL` - Model used by agents
 - `AGENT_MODE` - Operation mode (autonomous/manual)
 - `AUTO_COMMIT` - Auto-commit changes (true/false)
 - `AUTO_PUSH` - Auto-push to remote (true/false)
@@ -219,11 +221,11 @@ GITHUB_REPO=username/recipemaker
 
 ## Troubleshooting
 
-### API Key Issues
+### Ollama Connection Issues
 ```
-Error: ANTHROPIC_API_KEY not found
+Error: Cannot connect to Ollama
 ```
-Solution: Ensure `.env` file exists with your API key
+Solution: Start Ollama with `ollama serve` and verify `OLLAMA_URL`
 
 ### Agent Failures
 ```

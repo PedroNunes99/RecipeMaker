@@ -11,7 +11,7 @@ This file helps Claude Code work more effectively on this project by documenting
 - **Backend**: Python, FastAPI, Prisma ORM, SQLite
 - **Agent System**: 5 specialized AI agents (Developer, Tester, Validator, Documenter, Orchestrator)
 - **LLM (Dev Agents)**: Ollama with DeepSeek Coder 33B (local, free)
-- **LLM (Recipe AI)**: Ollama with Mistral (configurable via `OLLAMA_MODEL` env var)
+- **LLM (Recipe AI)**: Ollama with fixed Mistral model
 
 ## Architecture
 
@@ -266,10 +266,10 @@ gh pr create --title "Feature: description" --body "Details..."
 
 ### 2026-02-10: AI Recipe Generation with Ollama
 **Decision**: Use Ollama (Mistral model) for recipe generation from natural language
-**Reason**: Free, local, private; configurable model via env vars for future server hosting
+**Reason**: Free, local, private, and stable for production behavior
 **Architecture**: Prompt → Ollama → JSON extraction → IngredientMatcher (fuzzy) → ManualForm pre-fill
 **Fallback**: Mock recipe data when Ollama is unavailable
-**Config**: `OLLAMA_URL`, `OLLAMA_MODEL`, `LLM_FALLBACK_MODE` in server/.env
+**Config**: `OLLAMA_URL` in `server/.env`; model is fixed to `mistral` in code
 
 ### 2026-02-10: Unified AI Flow (ManualForm Pre-fill)
 **Decision**: AI-generated recipes pre-fill ManualForm instead of showing directly in RecipeDetail

@@ -18,6 +18,13 @@ async def test_ollama_health_check():
     # Note: Test passes regardless of whether Ollama is running
 
 
+def test_ollama_client_uses_fixed_model(monkeypatch):
+    """Recipe generation always uses the single configured model."""
+    monkeypatch.setenv("OLLAMA_MODEL", "llama3")
+    client = OllamaClient()
+    assert client.model == "mistral"
+
+
 @pytest.mark.asyncio
 async def test_ingredient_exact_match(clean_db, multiple_ingredients):
     """Test exact ingredient name matching"""
