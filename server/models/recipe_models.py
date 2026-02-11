@@ -17,6 +17,7 @@ class RecipeStepCreate(BaseModel):
     """Model for creating a recipe step."""
     order: int = Field(ge=1, description="Step order must be >= 1")
     instruction: str = Field(min_length=1, description="Step instruction cannot be empty")
+    notes: Optional[str] = Field(None, max_length=500, description="Optional tips or notes for this step")
 
 
 class RecipeCreateRequest(BaseModel):

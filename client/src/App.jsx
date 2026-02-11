@@ -106,8 +106,20 @@ const RecipeCard = ({ title, description, category, onClick, recipe }) => (
     className="glass-panel overflow-hidden group hover:-translate-y-1 transition-all duration-300 cursor-pointer"
   >
     <div className="h-48 bg-gradient-to-br from-sage-100 to-sage-200 flex items-center justify-center relative overflow-hidden">
-      <div className="absolute inset-0 bg-sage-600/5 group-hover:bg-sage-600/10 transition-colors"></div>
-      <div className="text-sage-300 font-bold italic text-4xl opacity-30 uppercase tracking-widest">Recipe</div>
+      {recipe?.imageUrl ? (
+        <img
+          src={recipe.imageUrl}
+          alt={title}
+          className="w-full h-full object-cover absolute inset-0"
+          loading="lazy"
+          onError={(e) => { e.target.style.display = 'none'; }}
+        />
+      ) : (
+        <>
+          <div className="absolute inset-0 bg-sage-600/5 group-hover:bg-sage-600/10 transition-colors"></div>
+          <div className="text-sage-300 font-bold italic text-4xl opacity-30 uppercase tracking-widest">Recipe</div>
+        </>
+      )}
     </div>
     <div className="p-6">
       <div className="flex justify-between items-start mb-2">
@@ -255,22 +267,39 @@ const ManualForm = ({ existingRecipe = null, onComplete = null }) => {
     steps: []
   });
 
-  // Initialize form data from existing recipe when editing
+  // Initialize form data from existing recipe when editing or AI pre-fill
   React.useEffect(() => {
     if (existingRecipe) {
       setFormData({
         title: existingRecipe.title || '',
         description: existingRecipe.description || '',
         servings: existingRecipe.servings || 1,
-        ingredients: existingRecipe.ingredients?.map(ri => ({
-          ...ri.ingredient,
-          quantity: ri.quantity,
-          unit: ri.unit,
-          ingredientId: ri.ingredient.id
-        })) || [],
+        ingredients: existingRecipe.ingredients?.map(ri => {
+          // Handle both DB format (nested ri.ingredient) and AI format (flat object)
+          if (ri.ingredient) {
+            return {
+              ...ri.ingredient,
+              quantity: ri.quantity,
+              unit: ri.unit,
+              ingredientId: ri.ingredient.id
+            };
+          }
+          return {
+            id: ri.id,
+            name: ri.name,
+            calories: ri.calories,
+            protein: ri.protein,
+            carbohydrates: ri.carbohydrates,
+            fats: ri.fats,
+            quantity: ri.quantity,
+            unit: ri.unit,
+            ingredientId: ri.ingredientId || ri.id
+          };
+        }) || [],
         steps: existingRecipe.steps?.map(s => ({
           order: s.order,
-          instruction: s.instruction
+          instruction: s.instruction,
+          notes: s.notes || null
         })) || []
       });
     }
@@ -312,7 +341,8 @@ const ManualForm = ({ existingRecipe = null, onComplete = null }) => {
   const [selectedIngredient, setSelectedIngredient] = useState(null);
 
   const [currentInstruction, setCurrentInstruction] = useState('');
-  const [error, setError] = useState(null); // New error state
+  const [currentNotes, setCurrentNotes] = useState('');
+  const [error, setError] = useState(null);
   const [nutritionPreview, setNutritionPreview] = useState(null);
 
   const nextStep = () => setStep(s => s + 1);
@@ -352,16 +382,19 @@ const ManualForm = ({ existingRecipe = null, onComplete = null }) => {
       ...formData,
       steps: [...formData.steps, {
         order: formData.steps.length + 1,
-        instruction: currentInstruction
+        instruction: currentInstruction,
+        notes: currentNotes || null
       }]
     });
     setCurrentInstruction('');
+    setCurrentNotes('');
   };
 
   const handleSubmit = async () => {
     setError(null);
     try {
-      const isEditing = !!existingRecipe;
+      // Only treat as editing if the recipe has a DB id (AI-generated recipes don't)
+      const isEditing = existingRecipe?.id ? true : false;
       const url = isEditing
         ? `http://localhost:8000/recipes/${existingRecipe.id}`
         : 'http://localhost:8000/recipes/manual';
@@ -556,7 +589,13 @@ const ManualForm = ({ existingRecipe = null, onComplete = null }) => {
               value={currentInstruction}
               onChange={(e) => setCurrentInstruction(e.target.value)}
               placeholder="Describe this step..."
-              className="glass-input h-24 mb-4"
+              className="glass-input h-24 mb-3"
+            ></textarea>
+            <textarea
+              value={currentNotes}
+              onChange={(e) => setCurrentNotes(e.target.value)}
+              placeholder="Optional: Add a tip or note for this step..."
+              className="glass-input h-16 mb-4 text-sm"
             ></textarea>
             <div className="flex justify-end">
               <button onClick={addStep} className="btn-primary">Add Step</button>
@@ -569,7 +608,14 @@ const ManualForm = ({ existingRecipe = null, onComplete = null }) => {
                 <div className="w-10 h-10 rounded-full bg-sage-100 text-sage-600 flex items-center justify-center font-black flex-shrink-0 shadow-inner">
                   {s.order}
                 </div>
-                <p className="text-sage-800 py-2">{s.instruction}</p>
+                <div className="flex-1">
+                  <p className="text-sage-800 py-2">{s.instruction}</p>
+                  {s.notes && (
+                    <p className="text-sage-500 text-sm italic pl-2 border-l-2 border-sage-200">
+                      Tip: {s.notes}
+                    </p>
+                  )}
+                </div>
               </div>
             ))}
           </div>
@@ -577,7 +623,7 @@ const ManualForm = ({ existingRecipe = null, onComplete = null }) => {
           <div className="flex justify-between pt-4">
             <button onClick={prevStep} className="px-6 py-2 text-sage-400 font-bold hover:text-sage-600 transition-colors">Back</button>
             <button onClick={handleSubmit} disabled={formData.steps.length === 0} className="btn-primary bg-gradient-to-r from-sage-500 to-sage-600">
-              {existingRecipe ? 'Update Recipe 🌿' : 'Save Premium Recipe 🌿'}
+              {existingRecipe?.id ? 'Update Recipe 🌿' : 'Save Recipe 🌿'}
             </button>
           </div>
           {error && (

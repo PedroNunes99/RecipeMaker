@@ -10,7 +10,8 @@ This file helps Claude Code work more effectively on this project by documenting
 - **Frontend**: React 19, Vite, Tailwind CSS
 - **Backend**: Python, FastAPI, Prisma ORM, SQLite
 - **Agent System**: 5 specialized AI agents (Developer, Tester, Validator, Documenter, Orchestrator)
-- **LLM**: Ollama with DeepSeek Coder 33B (local, free)
+- **LLM (Dev Agents)**: Ollama with DeepSeek Coder 33B (local, free)
+- **LLM (Recipe AI)**: Ollama with Mistral (configurable via `OLLAMA_MODEL` env var)
 
 ## Architecture
 
@@ -23,10 +24,17 @@ RecipeMaker/
 │   │   └── main.jsx      # Entry point
 │   └── package.json
 ├── server/               # Python backend
-│   ├── agents/           # AI recipe generation
+│   ├── agents/           # AI recipe generation (CookingExpertAgent + Ollama)
 │   ├── services/         # Business logic
+│   │   ├── ai_service.py         # Orchestrates LLM + ingredient matching
+│   │   ├── ingredient_service.py # CRUD + NutritionService
+│   │   ├── ingredient_matcher.py # Fuzzy matching AI→DB ingredients
+│   │   ├── ollama_client.py      # Async Ollama API client
+│   │   └── usda_service.py       # USDA FoodData Central API
+│   ├── models/           # Pydantic request/response models
+│   ├── tests/            # pytest test suite (34+ tests)
 │   ├── prisma/           # Database schema
-│   └── main.py           # FastAPI app
+│   └── main.py           # FastAPI app (full CRUD + AI endpoints)
 └── .agent/               # Autonomous development system
     ├── agents/           # 5 AI agents
     ├── config/           # Agent configurations
@@ -80,6 +88,17 @@ RecipeMaker/
 ### ❌ Mistake 5: Large components
 **Problem**: Components with 500+ lines
 **Solution**: Break into smaller, reusable components
+
+### ❌ Mistake 6: Multiple AI modes confusing users
+**Problem**: RecipeCreator had 3 modes (Manual, AI Assisted, AI Freestyle) with duplicate mock logic
+**Solution**: Simplified to 2 modes (Manual, AI Generate). AI generates recipe then pre-fills ManualForm for consistency
+**Date**: 2026-02-10
+**Fixed By**: Unified AI flow with ManualForm pre-fill pattern
+
+### ❌ Mistake 7: Not reading files before editing
+**Problem**: Edit tool fails if file hasn't been Read first in the conversation
+**Solution**: Always Read a file before attempting to Edit it
+**Date**: 2026-02-10
 
 ## Git Workflow
 
@@ -188,12 +207,20 @@ cd client && npm run dev
 # Start backend
 cd server && uvicorn main:app --reload
 
+# Start Ollama (for AI recipe generation)
+ollama serve
+# Pull model (first time only)
+ollama pull mistral
+
 # Start agents
 cd .agent && npm start
 
 # Run tests
 cd client && npm test
 cd server && pytest
+
+# Run only AI integration tests
+cd server && pytest tests/test_ai_integration.py -v
 ```
 
 ### Git
@@ -232,6 +259,23 @@ gh pr create --title "Feature: description" --body "Details..."
 **Alternative**: Full autonomy requires Claude API or custom tool parser
 **Documentation**: See `.agent/AUTONOMOUS_MODE.md` for implementation guide
 
+### 2026-02-10: Recipe CRUD with Auto-Nutrition
+**Decision**: Auto-calculate nutrition from ingredient quantities on recipe create/update
+**Reason**: Ensures accurate, consistent nutrition data without manual entry
+**Implementation**: NutritionService sums (ingredient nutrition × quantity) for all recipe ingredients
+
+### 2026-02-10: AI Recipe Generation with Ollama
+**Decision**: Use Ollama (Mistral model) for recipe generation from natural language
+**Reason**: Free, local, private; configurable model via env vars for future server hosting
+**Architecture**: Prompt → Ollama → JSON extraction → IngredientMatcher (fuzzy) → ManualForm pre-fill
+**Fallback**: Mock recipe data when Ollama is unavailable
+**Config**: `OLLAMA_URL`, `OLLAMA_MODEL`, `LLM_FALLBACK_MODE` in server/.env
+
+### 2026-02-10: Unified AI Flow (ManualForm Pre-fill)
+**Decision**: AI-generated recipes pre-fill ManualForm instead of showing directly in RecipeDetail
+**Reason**: Consistent user experience — all recipes go through same ingredient selection flow
+**Pattern**: `AIForm → generate → setGeneratedRecipe → switch to ManualForm → user reviews & saves`
+
 ## Resources
 
 - **React Docs**: https://react.dev
@@ -248,8 +292,30 @@ gh pr create --title "Feature: description" --body "Details..."
 - Prefer existing patterns over new approaches
 - Test changes before committing
 
+## API Endpoints
+
+### Recipes
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/recipes` | List all recipes |
+| GET | `/recipes/{id}` | Get single recipe with ingredients |
+| POST | `/recipes` | Create recipe (auto-calculates nutrition) |
+| PUT | `/recipes/{id}` | Update recipe (recalculates nutrition) |
+| DELETE | `/recipes/{id}` | Delete recipe and its ingredient links |
+| GET | `/recipes/search?q=term` | Search recipes by title, description, tags |
+| POST | `/recipes/ai-generate` | Generate recipe from natural language prompt |
+
+### Ingredients
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/ingredients` | List all ingredients |
+| POST | `/ingredients` | Create ingredient |
+| GET | `/ingredients/search?q=term` | Search local ingredients |
+| GET | `/ingredients/usda-search?q=term` | Search USDA FoodData Central |
+| POST | `/ingredients/import-usda` | Import ingredient from USDA data |
+
 ---
 
-**Last Updated**: 2026-02-09
+**Last Updated**: 2026-02-10
 **Status**: Active Development
 **Maintained By**: Claude Code + Autonomous Agents

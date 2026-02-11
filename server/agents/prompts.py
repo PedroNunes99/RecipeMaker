@@ -13,46 +13,25 @@ Guidelines:
 - If the user asks for nutritional estimates, provide values for Calories, Protein, Carbs, and Fats per serving.
 """
 
-RECIPE_SCHEMA = {
-    "type": "object",
-    "properties": {
-        "title": {"type": "string"},
-        "description": {"type": "string"},
-        "servings": {"type": "integer"},
-        "ingredients": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "name": {"type": "string"},
-                    "quantity": {"type": "number"},
-                    "unit": {"type": "string"},
-                    "category": {"type": "string"}
-                },
-                "required": ["name", "quantity", "unit"]
-            }
-        },
-        "steps": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "order": {"type": "integer"},
-                    "instruction": {"type": "string"},
-                    "technique_tip": {"type": "string"}
-                },
-                "required": ["order", "instruction"]
-            }
-        },
-        "macros": {
-            "type": "object",
-            "properties": {
-                "calories": {"type": "number"},
-                "protein": {"type": "number"},
-                "carbs": {"type": "number"},
-                "fat": {"type": "number"}
-            }
-        }
-    },
-    "required": ["title", "ingredients", "steps", "macros"]
-}
+RECIPE_EXAMPLE = """{
+  "title": "Grilled Chicken Salad",
+  "description": "A healthy Mediterranean-style grilled chicken salad.",
+  "servings": 2,
+  "ingredients": [
+    {"name": "Chicken Breast", "quantity": 300, "unit": "g"},
+    {"name": "Olive Oil", "quantity": 15, "unit": "ml"},
+    {"name": "Tomato", "quantity": 150, "unit": "g"},
+    {"name": "Salt", "quantity": 5, "unit": "g"}
+  ],
+  "steps": [
+    {"order": 1, "instruction": "Season chicken breast with salt and olive oil.", "notes": "Let the chicken rest at room temperature for 10 minutes before grilling."},
+    {"order": 2, "instruction": "Grill chicken for 6-7 minutes per side until cooked through.", "notes": "Internal temperature should reach 165F (74C)."},
+    {"order": 3, "instruction": "Slice tomatoes and arrange on a plate with the chicken.", "notes": null}
+  ],
+  "macros": {
+    "calories": 450,
+    "protein": 45,
+    "carbs": 12,
+    "fat": 18
+  }
+}"""
