@@ -349,3 +349,49 @@ See [NEXT_TASKS.md](.agent/NEXT_TASKS.md) for full roadmap.
   - `.agent/QUICK_START.md`
   - `CLAUDE.md`
 - Documentation now reflects single-model architecture and updated frontend behavior.
+
+---
+
+## 2026-02-11: Session 4 - Recipe Discovery (Search, Filter, Sort)
+
+### PR Documentation
+
+- Proposed branch: `feat/recipe-search-filter-sort`
+- Scope:
+  - Add production-ready recipe discovery controls in frontend.
+  - Add backend query filtering/sorting/pagination support for `/recipes`.
+  - Add regression tests and API test coverage for new query behavior.
+
+### Backend Changes
+
+- Updated `GET /recipes` in `server/main.py` to support:
+  - `q` (title/description search)
+  - `minCalories`, `maxCalories`
+  - `minProtein`
+  - `sortBy` (`createdAt`, `totalCalories`, `totalProtein`, `title`)
+  - `sortOrder` (`asc`, `desc`)
+  - `limit`, `offset`
+- Added input validation for sort fields and sort order with `400` responses.
+
+### Frontend Changes
+
+- Updated `client/src/App.jsx` recipe list experience:
+  - Added search box, calorie/protein filters, sort selector, and result limit quick toggles.
+  - Wired query controls to backend query params.
+  - Preserved existing loading/error/empty states with improved discovery flow.
+
+### Testing Updates
+
+- Updated `client/src/App.test.jsx`:
+  - Adjusted fetch URL assertions for query-string based loading.
+  - Added test to verify filter/sort controls produce correct API params.
+- Updated `server/tests/test_recipe_api.py`:
+  - Added tests for query filtering/sorting/limit behavior.
+  - Added test for offset pagination behavior.
+  - Added test for invalid sort field rejection.
+
+### Documentation Updates
+
+- Updated:
+  - `README.md` (recipe API query params)
+  - `CLAUDE.md` (recipes endpoint capabilities)

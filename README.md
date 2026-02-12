@@ -135,7 +135,8 @@ RecipeMaker/
 ## API Endpoints
 
 ### Recipes
-- `GET /recipes` - List all recipes
+- `GET /recipes` - List recipes with optional search/filter/sort/pagination
+  - Query params: `q`, `minCalories`, `maxCalories`, `minProtein`, `sortBy`, `sortOrder`, `limit`, `offset`
 - `POST /recipes/manual` - Create recipe manually
 - `POST /recipes/ai-generate` - Generate recipe with AI
 

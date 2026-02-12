@@ -1,11 +1,10 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from prisma import Prisma
 from services.nutrition_service import NutritionService
 from services.ai_service import AIService
 from services.ingredient_service import IngredientService
 from services.usda_service import USDAService
-from services.image_service import ImageService
 from models.recipe_models import RecipeCreateRequest, RecipeUpdateRequest
 import os
 from dotenv import load_dotenv
@@ -138,8 +137,51 @@ async def import_usda_ingredient(fdc_id: int):
         raise HTTPException(status_code=500, detail=f"Error importing ingredient: {str(e)}")
 
 @app.get("/recipes")
-async def get_recipes():
-    recipes = await db.recipe.find_many(include={"steps": True, "ingredients": {"include": {"ingredient": True}}})
+async def get_recipes(
+    q: str | None = None,
+    minCalories: float | None = None,
+    maxCalories: float | None = None,
+    minProtein: float | None = None,
+    sortBy: str = "createdAt",
+    sortOrder: str = "desc",
+    limit: int = Query(default=50, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
+):
+    allowed_sort_fields = {"createdAt", "totalCalories", "totalProtein", "title"}
+    if sortBy not in allowed_sort_fields:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid sortBy. Allowed: {', '.join(sorted(allowed_sort_fields))}"
+        )
+
+    if sortOrder not in {"asc", "desc"}:
+        raise HTTPException(status_code=400, detail="Invalid sortOrder. Allowed: asc, desc")
+
+    where = {}
+
+    if q:
+        where["OR"] = [
+            {"title": {"contains": q}},
+            {"description": {"contains": q}},
+        ]
+
+    if minCalories is not None or maxCalories is not None:
+        where["totalCalories"] = {}
+        if minCalories is not None:
+            where["totalCalories"]["gte"] = minCalories
+        if maxCalories is not None:
+            where["totalCalories"]["lte"] = maxCalories
+
+    if minProtein is not None:
+        where["totalProtein"] = {"gte": minProtein}
+
+    recipes = await db.recipe.find_many(
+        where=where if where else None,
+        include={"steps": True, "ingredients": {"include": {"ingredient": True}}},
+        order={sortBy: sortOrder},
+        skip=offset,
+        take=limit,
+    )
     return recipes
 
 @app.post("/recipes/manual")
@@ -169,14 +211,7 @@ async def create_recipe_manual(data: RecipeCreateRequest):
     # Calculate nutrition using existing NutritionService
     totals = NutritionService.calculate_recipe_totals(ingredients_with_data)
 
-    # Generate image URLs
-    image_urls = ImageService.generate_all_image_urls(
-        title=data.title,
-        description=data.description or "",
-        steps=[{"order": s.order, "instruction": s.instruction} for s in data.steps]
-    )
-
-    # Create recipe WITH calculated nutrition and hero image
+    # Create recipe WITH calculated nutrition
     recipe_data = {
         "title": data.title,
         "description": data.description,
@@ -185,18 +220,16 @@ async def create_recipe_manual(data: RecipeCreateRequest):
         "totalProtein": totals["protein"],
         "totalCarbs": totals["carbs"],
         "totalFat": totals["fat"],
-        "imageUrl": image_urls["recipe_image_url"],
     }
 
     recipe = await db.recipe.create(data=recipe_data)
 
-    # Create steps with notes and generated images
-    for i, step in enumerate(data.steps):
+    # Create steps with notes
+    for step in data.steps:
         await db.recipestep.create(data={
             "order": step.order,
             "instruction": step.instruction,
             "notes": step.notes,
-            "photoUrl": image_urls["step_image_urls"][i],
             "recipeId": recipe.id
         })
 
@@ -268,29 +301,16 @@ async def update_recipe(recipe_id: str, data: RecipeUpdateRequest):
     if data.servings is not None:
         update_data["servings"] = data.servings
 
-    # Regenerate hero image if title or description changed
-    if data.title is not None or data.description is not None:
-        new_title = data.title or existing.title
-        new_desc = data.description or existing.description or ""
-        update_data["imageUrl"] = ImageService.generate_recipe_image_url(new_title, new_desc)
-
     # Handle steps update
     if data.steps is not None:
         # Delete existing steps
         await db.recipestep.delete_many(where={"recipeId": recipe_id})
-        # Generate step images
-        current_title = data.title or existing.title
-        step_image_urls = [
-            ImageService.generate_step_image_url(s.instruction, current_title, s.order)
-            for s in data.steps
-        ]
-        # Create new steps with notes and images
-        for i, step in enumerate(data.steps):
+        # Create new steps with notes
+        for step in data.steps:
             await db.recipestep.create(data={
                 "order": step.order,
                 "instruction": step.instruction,
                 "notes": step.notes,
-                "photoUrl": step_image_urls[i],
                 "recipeId": recipe_id
             })
 
