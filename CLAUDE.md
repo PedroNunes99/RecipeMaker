@@ -100,6 +100,11 @@ RecipeMaker/
 **Solution**: Always Read a file before attempting to Edit it
 **Date**: 2026-02-10
 
+### ❌ Mistake 8: Placeholder visual blocks for recipe images
+**Problem**: Decorative image placeholders added visual noise and no value
+**Solution**: Remove unused image blocks and prioritize recipe metadata, instructions, and nutrition hierarchy
+**Date**: 2026-02-12
+
 ## Git Workflow
 
 ### Commit Messages
@@ -276,6 +281,11 @@ gh pr create --title "Feature: description" --body "Details..."
 **Reason**: Consistent user experience — all recipes go through same ingredient selection flow
 **Pattern**: `AIForm → generate → setGeneratedRecipe → switch to ManualForm → user reviews & saves`
 
+### 2026-02-12: UI Consistency and Friction Reduction
+**Decision**: Standardize frontend interaction patterns and remove unused recipe image/purchase UI elements
+**Reason**: Improve usability, reduce clutter, and keep features aligned with actual product behavior
+**Implementation**: Added filter reset/empty states, removable draft items in recipe builder, cleaned detail layout
+
 ## Resources
 
 - **React Docs**: https://react.dev
@@ -316,6 +326,6 @@ gh pr create --title "Feature: description" --body "Details..."
 
 ---
 
-**Last Updated**: 2026-02-10
+**Last Updated**: 2026-02-12
 **Status**: Active Development
 **Maintained By**: Claude Code + Autonomous Agents

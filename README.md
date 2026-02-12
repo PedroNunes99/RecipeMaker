@@ -8,7 +8,8 @@ A modern, AI-powered recipe management application with an autonomous multi-agen
 - **AI-Powered**: Generate recipes using AI assistance
 - **Ingredient Database**: Comprehensive ingredient database with nutritional information
 - **Nutrition Tracking**: Automatic nutritional calculations
-- **Beautiful UI**: Modern, responsive interface built with React and Tailwind CSS
+- **Polished UI/UX**: Cleaner layout, clearer feedback states, and consistent interaction patterns
+- **Focused Recipe Views**: Image-free recipe cards/detail screens with stronger content hierarchy
 
 ## Technology Stack
 
@@ -153,6 +154,7 @@ cd client
 npm run dev      # Start dev server
 npm run build    # Build for production
 npm run lint     # Run linter
+npm test -- --run # Run frontend tests
 ```
 
 ### Backend Development

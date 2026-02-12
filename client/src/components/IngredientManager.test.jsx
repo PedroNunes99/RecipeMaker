@@ -51,6 +51,8 @@ describe('IngredientManager', () => {
       expect(screen.getByText('Tomato')).toBeInTheDocument()
       expect(screen.getByText('Chicken')).toBeInTheDocument()
     })
+
+    expect(screen.queryByRole('button', { name: /view purchase info/i })).not.toBeInTheDocument()
   })
 
   it('opens create custom modal when button is clicked', () => {
@@ -98,6 +100,19 @@ describe('IngredientManager', () => {
 
     await waitFor(() => {
       expect(globalThis.fetch).toHaveBeenCalledWith('http://localhost:8000/ingredients/search?q=garlic')
+    })
+  })
+
+  it('shows empty state when no local ingredient results exist', async () => {
+    globalThis.fetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ([])
+    })
+
+    render(<IngredientManager />)
+
+    await waitFor(() => {
+      expect(screen.getByText(/no matching ingredients in your library/i)).toBeInTheDocument()
     })
   })
 })
