@@ -83,6 +83,14 @@ const RecipeList = ({ onSelectRecipe, refreshKey }) => {
   const [sortBy, setSortBy] = React.useState('createdAt');
   const [sortOrder, setSortOrder] = React.useState('desc');
   const [limit, setLimit] = React.useState(24);
+  const hasActiveFilters =
+    searchTerm.trim() !== '' ||
+    minCalories !== '' ||
+    maxCalories !== '' ||
+    minProtein !== '' ||
+    sortBy !== 'createdAt' ||
+    sortOrder !== 'desc' ||
+    limit !== 24;
 
   const buildRecipesUrl = React.useCallback(() => {
     const params = new URLSearchParams();
@@ -111,9 +119,9 @@ const RecipeList = ({ onSelectRecipe, refreshKey }) => {
 
   return (
     <div className="animate-in fade-in slide-in-from-bottom-4 duration-700">
-      <div className="mb-8">
+      <div className="mb-6">
         <h1 className="text-4xl md:text-5xl font-extrabold">Your Collection</h1>
-        <p className="mt-2 text-sage-500">Manage your saved recipes, nutrition, and cooking steps in one place.</p>
+        <p className="mt-2 text-sage-500">Search, filter, and open any saved recipe in one place.</p>
       </div>
 
       <div className="glass-panel p-5 mb-6 bg-white/50">
@@ -169,6 +177,23 @@ const RecipeList = ({ onSelectRecipe, refreshKey }) => {
             Showing up to {limit} recipes
           </p>
           <div className="flex items-center gap-2">
+            {hasActiveFilters && (
+              <button
+                type="button"
+                onClick={() => {
+                  setSearchTerm('');
+                  setMinCalories('');
+                  setMaxCalories('');
+                  setMinProtein('');
+                  setSortBy('createdAt');
+                  setSortOrder('desc');
+                  setLimit(24);
+                }}
+                className="px-3 py-1 rounded-lg text-xs font-bold bg-white text-sage-600 border border-sage-200 hover:bg-sage-50"
+              >
+                Reset
+              </button>
+            )}
             {[12, 24, 48].map((option) => (
               <button
                 key={option}
@@ -222,27 +247,23 @@ const RecipeCard = ({ title, description, category, onClick, recipe }) => (
   <button
     type="button"
     onClick={onClick}
-    className="glass-panel text-left overflow-hidden group hover:-translate-y-1 transition-all duration-300 cursor-pointer w-full"
+    className="glass-panel text-left group hover:-translate-y-1 transition-all duration-300 cursor-pointer w-full p-6"
   >
-    <div className="h-48 bg-gradient-to-br from-sage-100 to-sage-200 flex items-center justify-center relative overflow-hidden">
-      <div className="absolute inset-0 bg-sage-600/5 group-hover:bg-sage-600/10 transition-colors" />
-      <div className="text-sage-300 font-bold italic text-4xl opacity-30 uppercase tracking-widest">Recipe</div>
+    <div className="flex justify-between items-start mb-2 gap-2">
+      <h3 className="text-xl font-black text-sage-800">{title}</h3>
+      <span className="text-[10px] uppercase tracking-widest font-black px-2 py-1 bg-sage-100 text-sage-600 rounded-lg">
+        {category}
+      </span>
     </div>
-    <div className="p-6">
-      <div className="flex justify-between items-start mb-2 gap-2">
-        <h3 className="text-xl font-black text-sage-800">{title}</h3>
-        <span className="text-[10px] uppercase tracking-widest font-black px-2 py-1 bg-sage-100 text-sage-600 rounded-lg">
-          {category}
-        </span>
+    <p className="text-sage-600/80 text-sm leading-relaxed min-h-10">
+      {description || 'No description provided.'}
+    </p>
+    <div className="mt-6 flex justify-between items-center border-t border-sage-100 pt-4">
+      <div className="flex space-x-4 text-[10px] font-bold uppercase tracking-tighter text-sage-400">
+        <span>{Math.round(recipe?.totalCalories || 0)} kcal</span>
+        <span>{Math.round(recipe?.totalProtein || 0)}g P</span>
       </div>
-      <p className="text-sage-600/80 text-sm leading-relaxed min-h-10">{description}</p>
-      <div className="mt-6 flex justify-between items-center border-t border-sage-100 pt-4">
-        <div className="flex space-x-4 text-[10px] font-bold uppercase tracking-tighter text-sage-400">
-          <span>{Math.round(recipe?.totalCalories || 0)} kcal</span>
-          <span>{Math.round(recipe?.totalProtein || 0)}g P</span>
-        </div>
-        <span className="text-sage-600 text-sm font-black group-hover:text-sage-800 transition-colors">View Details</span>
-      </div>
+      <span className="text-sage-600 text-sm font-black group-hover:text-sage-800 transition-colors">View Details</span>
     </div>
   </button>
 );
@@ -480,6 +501,22 @@ const ManualForm = ({ existingRecipe = null, onComplete = null }) => {
     setCurrentNotes('');
   };
 
+  const removeIngredientAt = (indexToRemove) => {
+    setFormData((previous) => ({
+      ...previous,
+      ingredients: previous.ingredients.filter((_, index) => index !== indexToRemove)
+    }));
+  };
+
+  const removeStepAt = (indexToRemove) => {
+    setFormData((previous) => ({
+      ...previous,
+      steps: previous.steps
+        .filter((_, index) => index !== indexToRemove)
+        .map((step, index) => ({ ...step, order: index + 1 }))
+    }));
+  };
+
   const handleSubmit = async () => {
     setError(null);
 
@@ -631,9 +668,18 @@ const ManualForm = ({ existingRecipe = null, onComplete = null }) => {
             <h3 className="font-black text-sage-400 uppercase text-[10px] tracking-widest">Added Ingredients</h3>
             {formData.ingredients.length === 0 && <p className="text-sage-400 italic text-sm">No ingredients added yet.</p>}
             {formData.ingredients.map((ing, idx) => (
-              <div key={idx} className="flex justify-between items-center p-4 glass-panel bg-white/40">
+              <div key={idx} className="flex justify-between items-center p-4 glass-panel bg-white/40 gap-3">
                 <span className="font-bold text-sage-800">{ing.name}</span>
-                <span className="font-black text-sage-600 bg-white/60 px-3 py-1 rounded-lg shadow-sm">{ing.quantity} {ing.unit}</span>
+                <div className="flex items-center gap-2">
+                  <span className="font-black text-sage-600 bg-white/60 px-3 py-1 rounded-lg shadow-sm">{ing.quantity} {ing.unit}</span>
+                  <button
+                    type="button"
+                    onClick={() => removeIngredientAt(idx)}
+                    className="px-2 py-1 rounded-lg text-xs font-bold text-sage-600 hover:bg-sage-100"
+                  >
+                    Remove
+                  </button>
+                </div>
               </div>
             ))}
           </div>
@@ -691,6 +737,13 @@ const ManualForm = ({ existingRecipe = null, onComplete = null }) => {
                   <p className="text-sage-800 py-2">{s.instruction}</p>
                   {s.notes && <p className="text-sage-500 text-sm italic pl-2 border-l-2 border-sage-200">Tip: {s.notes}</p>}
                 </div>
+                <button
+                  type="button"
+                  onClick={() => removeStepAt(idx)}
+                  className="self-start px-2 py-1 rounded-lg text-xs font-bold text-sage-600 hover:bg-sage-100"
+                >
+                  Remove
+                </button>
               </div>
             ))}
           </div>

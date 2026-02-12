@@ -130,7 +130,7 @@ const IngredientManager = () => {
       <p className="text-sage-500 mb-6">Search your saved ingredients or import trusted USDA nutrition data.</p>
 
       {statusMessage && (
-        <div className="mb-6 rounded-2xl border border-sage-200 bg-sage-50 px-4 py-3 text-sm font-semibold text-sage-700">
+        <div role="status" className="mb-6 rounded-2xl border border-sage-200 bg-sage-50 px-4 py-3 text-sm font-semibold text-sage-700">
           {statusMessage}
         </div>
       )}
@@ -215,9 +215,9 @@ const IngredientManager = () => {
               </div>
 
               <div className="flex gap-4 pt-8">
-                <button type="button" onClick={handleCreateCustom} className="btn-primary flex-1 shadow-sage-900/20">Save Ingredient</button>
-                <button type="button" onClick={() => setIsAddingCustom(false)} className="px-8 py-3 rounded-2xl font-bold text-sage-400 hover:text-sage-600 transition-colors">Cancel</button>
-              </div>
+              <button type="button" onClick={handleCreateCustom} className="btn-primary flex-1 shadow-sage-900/20">Save Ingredient</button>
+              <button type="button" onClick={() => setIsAddingCustom(false)} className="px-8 py-3 rounded-2xl font-bold text-sage-400 hover:text-sage-600 transition-colors">Cancel</button>
+            </div>
             </div>
           </div>
         </div>
@@ -225,6 +225,14 @@ const IngredientManager = () => {
 
       {isLoading && (
         <div className="mb-6 rounded-2xl border border-sage-100 bg-white/60 p-4 text-sm text-sage-600">Loading ingredients...</div>
+      )}
+
+      {!isLoading && searchMode === 'local' && results.length === 0 && (
+        <div className="glass-panel p-8 text-center text-sage-500">No matching ingredients in your library.</div>
+      )}
+
+      {!isLoading && searchMode === 'usda' && usdaResults.length === 0 && (
+        <div className="glass-panel p-8 text-center text-sage-500">No USDA results found for this search.</div>
       )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -266,9 +274,6 @@ const IngredientCard = ({ ingredient }) => (
       <div className="flex justify-between border-b border-sage-100/50 pb-2"><span>Carb</span> <span className="text-sage-800 font-bold">{ingredient.carbs}g</span></div>
       <div className="flex justify-between border-b border-sage-100/50 pb-2"><span>Fat</span> <span className="text-sage-800 font-bold">{ingredient.fats}g</span></div>
     </div>
-    <button className="w-full py-3 text-[10px] font-black text-sage-400 hover:text-sage-600 transition-colors uppercase tracking-[0.2em] border border-sage-100 rounded-xl hover:bg-white/80">
-      View Purchase Info
-    </button>
   </div>
 );
 

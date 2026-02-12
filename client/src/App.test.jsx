@@ -169,4 +169,14 @@ describe('App', () => {
       )
     })
   })
+
+  it('shows reset control when filters are active', async () => {
+    render(<App />)
+
+    fireEvent.change(screen.getByPlaceholderText(/search recipes/i), { target: { value: 'salmon' } })
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /reset/i })).toBeInTheDocument()
+    })
+  })
 })

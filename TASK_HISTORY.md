@@ -395,3 +395,49 @@ See [NEXT_TASKS.md](.agent/NEXT_TASKS.md) for full roadmap.
 - Updated:
   - `README.md` (recipe API query params)
   - `CLAUDE.md` (recipes endpoint capabilities)
+
+---
+
+## 2026-02-12: Session 5 - UI/UX Consistency and Dead UI Cleanup
+
+### PR Documentation
+
+- Branch: `feat/ui-ux-polish-refactor`
+- Scope:
+  - Improve visual consistency and feedback across recipe and ingredient flows.
+  - Remove unused recipe image placeholders and redundant purchase CTA.
+  - Reduce creation friction with remove actions in multi-step recipe editor.
+  - Update tests and documentation.
+
+### Frontend Changes
+
+- Updated `client/src/App.jsx`:
+  - Added filter reset control in recipe discovery panel.
+  - Refined copy and spacing in recipe list header.
+  - Removed decorative recipe card image placeholder blocks.
+  - Added remove actions for draft ingredients and steps in recipe creation flow.
+- Updated `client/src/components/RecipeDetail.jsx`:
+  - Removed unused hero image placeholder panel.
+  - Replaced static macro percentages with computed macro distribution.
+  - Cleaned edit/delete button labels.
+- Updated `client/src/components/IngredientManager.jsx`:
+  - Added explicit empty-state feedback for local and USDA result lists.
+  - Added `role="status"` for status messaging.
+  - Removed unused "View Purchase Info" CTA.
+- Updated `client/src/index.css`:
+  - Added consistent focus-visible outlines for controls.
+  - Set explicit body line-height for readability.
+
+### Test Updates
+
+- Updated `client/src/App.test.jsx`:
+  - Added coverage for filter reset visibility when filters are active.
+- Updated `client/src/components/IngredientManager.test.jsx`:
+  - Added empty-state coverage.
+  - Added assertion for removed purchase CTA.
+
+### Verification
+
+- Frontend lint: `npm.cmd run lint` (pass)
+- Frontend tests: `npm.cmd test -- --run` (32 passed)
+- Backend tests: `pytest -p no:cacheprovider -q` in `server/` (51 passed)
