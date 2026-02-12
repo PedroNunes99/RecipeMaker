@@ -254,3 +254,85 @@ async def test_create_recipe_duplicate_title(api_client, clean_db):
     assert response.status_code == 409
     data = response.json()
     assert "already exists" in data["detail"].lower()
+
+
+@pytest.mark.asyncio
+async def test_get_recipes_supports_query_filter_sort_and_limit(api_client, clean_db):
+    await clean_db.recipe.create(data={
+        "title": "Alpha Salad",
+        "description": "Fresh greens",
+        "servings": 1,
+        "totalCalories": 220,
+        "totalProtein": 12,
+        "totalCarbs": 18,
+        "totalFat": 9
+    })
+    await clean_db.recipe.create(data={
+        "title": "Beta Chicken Bowl",
+        "description": "High protein",
+        "servings": 2,
+        "totalCalories": 640,
+        "totalProtein": 55,
+        "totalCarbs": 42,
+        "totalFat": 21
+    })
+    await clean_db.recipe.create(data={
+        "title": "Gamma Oats",
+        "description": "Breakfast",
+        "servings": 1,
+        "totalCalories": 410,
+        "totalProtein": 20,
+        "totalCarbs": 56,
+        "totalFat": 11
+    })
+
+    response = await api_client.get(
+        "/recipes?q=bowl&minCalories=500&minProtein=40&sortBy=totalCalories&sortOrder=desc&limit=5"
+    )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert len(data) == 1
+    assert data[0]["title"] == "Beta Chicken Bowl"
+
+
+@pytest.mark.asyncio
+async def test_get_recipes_supports_offset_pagination(api_client, clean_db):
+    await clean_db.recipe.create(data={
+        "title": "A Recipe",
+        "servings": 1,
+        "totalCalories": 100,
+        "totalProtein": 10,
+        "totalCarbs": 5,
+        "totalFat": 3
+    })
+    await clean_db.recipe.create(data={
+        "title": "B Recipe",
+        "servings": 1,
+        "totalCalories": 200,
+        "totalProtein": 12,
+        "totalCarbs": 7,
+        "totalFat": 4
+    })
+    await clean_db.recipe.create(data={
+        "title": "C Recipe",
+        "servings": 1,
+        "totalCalories": 300,
+        "totalProtein": 14,
+        "totalCarbs": 9,
+        "totalFat": 5
+    })
+
+    response = await api_client.get("/recipes?sortBy=title&sortOrder=asc&limit=1&offset=1")
+
+    assert response.status_code == 200
+    data = response.json()
+    assert len(data) == 1
+    assert data[0]["title"] == "B Recipe"
+
+
+@pytest.mark.asyncio
+async def test_get_recipes_rejects_invalid_sort_fields(api_client):
+    response = await api_client.get("/recipes?sortBy=invalidField")
+    assert response.status_code == 400
+    assert "Invalid sortBy" in response.json()["detail"]

@@ -73,7 +73,9 @@ describe('App', () => {
     render(<App />)
 
     await waitFor(() => {
-      expect(globalThis.fetch).toHaveBeenCalledWith('http://localhost:8000/recipes')
+      expect(globalThis.fetch).toHaveBeenCalledWith(
+        'http://localhost:8000/recipes?sortBy=createdAt&sortOrder=desc&limit=24'
+      )
     })
   })
 
@@ -129,7 +131,7 @@ describe('App', () => {
       expect(screen.getByText('Test Recipe 1')).toBeInTheDocument()
     })
 
-    const recipeCard = screen.getByText('Test Recipe 1').closest('div')
+    const recipeCard = screen.getByText('Test Recipe 1').closest('button')
     fireEvent.click(recipeCard)
 
     // Recipe detail should now be visible, Your Collection should not be
@@ -150,5 +152,21 @@ describe('App', () => {
     })
 
     consoleSpy.mockRestore()
+  })
+
+  it('sends filters and sorting as query params', async () => {
+    render(<App />)
+
+    fireEvent.change(screen.getByPlaceholderText(/search recipes/i), { target: { value: 'chicken' } })
+    fireEvent.change(screen.getByPlaceholderText(/min kcal/i), { target: { value: '300' } })
+    fireEvent.change(screen.getByPlaceholderText(/max kcal/i), { target: { value: '700' } })
+    fireEvent.change(screen.getByPlaceholderText(/min protein/i), { target: { value: '40' } })
+    fireEvent.change(screen.getByDisplayValue('Newest'), { target: { value: 'totalProtein:desc' } })
+
+    await waitFor(() => {
+      expect(globalThis.fetch).toHaveBeenLastCalledWith(
+        'http://localhost:8000/recipes?q=chicken&minCalories=300&maxCalories=700&minProtein=40&sortBy=totalProtein&sortOrder=desc&limit=24'
+      )
+    })
   })
 })

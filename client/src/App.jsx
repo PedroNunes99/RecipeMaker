@@ -76,11 +76,30 @@ const RecipeList = ({ onSelectRecipe, refreshKey }) => {
   const [recipes, setRecipes] = React.useState([]);
   const [isLoading, setIsLoading] = React.useState(true);
   const [error, setError] = React.useState('');
+  const [searchTerm, setSearchTerm] = React.useState('');
+  const [minCalories, setMinCalories] = React.useState('');
+  const [maxCalories, setMaxCalories] = React.useState('');
+  const [minProtein, setMinProtein] = React.useState('');
+  const [sortBy, setSortBy] = React.useState('createdAt');
+  const [sortOrder, setSortOrder] = React.useState('desc');
+  const [limit, setLimit] = React.useState(24);
+
+  const buildRecipesUrl = React.useCallback(() => {
+    const params = new URLSearchParams();
+    if (searchTerm.trim()) params.set('q', searchTerm.trim());
+    if (minCalories !== '') params.set('minCalories', minCalories);
+    if (maxCalories !== '') params.set('maxCalories', maxCalories);
+    if (minProtein !== '') params.set('minProtein', minProtein);
+    params.set('sortBy', sortBy);
+    params.set('sortOrder', sortOrder);
+    params.set('limit', String(limit));
+    return `${API_BASE}/recipes?${params.toString()}`;
+  }, [searchTerm, minCalories, maxCalories, minProtein, sortBy, sortOrder, limit]);
 
   React.useEffect(() => {
     setIsLoading(true);
     setError('');
-    fetch(`${API_BASE}/recipes`)
+    fetch(buildRecipesUrl())
       .then((res) => res.json())
       .then((data) => setRecipes(data))
       .catch((err) => {
@@ -88,13 +107,80 @@ const RecipeList = ({ onSelectRecipe, refreshKey }) => {
         setError('Unable to load recipes. Please refresh and try again.');
       })
       .finally(() => setIsLoading(false));
-  }, [refreshKey]);
+  }, [buildRecipesUrl, refreshKey]);
 
   return (
     <div className="animate-in fade-in slide-in-from-bottom-4 duration-700">
       <div className="mb-8">
         <h1 className="text-4xl md:text-5xl font-extrabold">Your Collection</h1>
         <p className="mt-2 text-sage-500">Manage your saved recipes, nutrition, and cooking steps in one place.</p>
+      </div>
+
+      <div className="glass-panel p-5 mb-6 bg-white/50">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-3">
+          <input
+            type="text"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            placeholder="Search recipes..."
+            className="glass-input mb-0 lg:col-span-2"
+          />
+          <input
+            type="number"
+            value={minCalories}
+            onChange={(e) => setMinCalories(e.target.value)}
+            placeholder="Min kcal"
+            className="glass-input mb-0"
+          />
+          <input
+            type="number"
+            value={maxCalories}
+            onChange={(e) => setMaxCalories(e.target.value)}
+            placeholder="Max kcal"
+            className="glass-input mb-0"
+          />
+          <input
+            type="number"
+            value={minProtein}
+            onChange={(e) => setMinProtein(e.target.value)}
+            placeholder="Min protein (g)"
+            className="glass-input mb-0"
+          />
+          <select
+            value={`${sortBy}:${sortOrder}`}
+            onChange={(e) => {
+              const [nextSortBy, nextSortOrder] = e.target.value.split(':');
+              setSortBy(nextSortBy);
+              setSortOrder(nextSortOrder);
+            }}
+            className="glass-input mb-0"
+          >
+            <option value="createdAt:desc">Newest</option>
+            <option value="createdAt:asc">Oldest</option>
+            <option value="totalCalories:asc">Calories Low-High</option>
+            <option value="totalCalories:desc">Calories High-Low</option>
+            <option value="totalProtein:desc">Protein High-Low</option>
+            <option value="title:asc">Title A-Z</option>
+          </select>
+        </div>
+
+        <div className="mt-3 flex items-center justify-between">
+          <p className="text-xs text-sage-500 uppercase tracking-widest font-bold">
+            Showing up to {limit} recipes
+          </p>
+          <div className="flex items-center gap-2">
+            {[12, 24, 48].map((option) => (
+              <button
+                key={option}
+                type="button"
+                onClick={() => setLimit(option)}
+                className={`px-3 py-1 rounded-lg text-xs font-bold ${limit === option ? 'bg-sage-600 text-white' : 'bg-sage-100 text-sage-600'}`}
+              >
+                {option}
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
 
       {error && (

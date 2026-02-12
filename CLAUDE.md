@@ -297,7 +297,7 @@ gh pr create --title "Feature: description" --body "Details..."
 ### Recipes
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| GET | `/recipes` | List all recipes |
+| GET | `/recipes` | List recipes (supports q/filter/sort/pagination) |
 | GET | `/recipes/{id}` | Get single recipe with ingredients |
 | POST | `/recipes` | Create recipe (auto-calculates nutrition) |
 | PUT | `/recipes/{id}` | Update recipe (recalculates nutrition) |
