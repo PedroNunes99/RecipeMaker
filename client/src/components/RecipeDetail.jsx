@@ -1,134 +1,168 @@
 import React from 'react';
 
-const RecipeDetail = ({ recipe, onBack, onEdit }) => {
-    if (!recipe) return null;
+const RecipeDetail = ({ recipe, onBack, onEdit, onDeleted }) => {
+  if (!recipe) return null;
 
-    const handleDelete = async (recipeId) => {
-        if (!window.confirm('Are you sure you want to delete this recipe? This action cannot be undone.')) {
-            return;
-        }
+  const getNutritionValue = (currentField, legacyField) => {
+    if (recipe[currentField] !== undefined && recipe[currentField] !== null) {
+      return Math.round(recipe[currentField]);
+    }
+    if (recipe[legacyField] !== undefined && recipe[legacyField] !== null) {
+      return Math.round(recipe[legacyField]);
+    }
+    return 0;
+  };
 
-        try {
-            const response = await fetch(`http://localhost:8000/recipes/${recipeId}`, {
-                method: 'DELETE'
-            });
-
-            if (response.ok) {
-                onBack();
-                window.location.reload();
-            } else {
-                alert('Failed to delete recipe. Please try again.');
-            }
-        } catch (error) {
-            console.error('Delete failed:', error);
-            alert('An error occurred while deleting the recipe.');
-        }
+  const macroDistribution = (() => {
+    const protein = getNutritionValue('totalProtein', 'protein');
+    const carbs = getNutritionValue('totalCarbs', 'carbs');
+    const fat = getNutritionValue('totalFat', 'fat');
+    const total = protein + carbs + fat;
+    if (total === 0) return { protein: 0, carbs: 0, fat: 0 };
+    return {
+      protein: Math.round((protein / total) * 100),
+      carbs: Math.round((carbs / total) * 100),
+      fat: Math.round((fat / total) * 100)
     };
+  })();
 
-    return (
-        <div className="animate-in fade-in zoom-in-95 duration-500">
-            <div className="flex items-center justify-between mb-8">
-                <div className="flex items-center space-x-4">
-                    <button
-                        onClick={onBack}
-                        className="p-3 hover:bg-sage-100 rounded-full transition-all group shadow-sm bg-white"
-                    >
-                        <svg className="w-6 h-6 text-sage-600 transform group-hover:-translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
-                    </button>
-                    <h1 className="text-4xl font-black text-sage-900">{recipe.title}</h1>
-                </div>
-                <div className="flex space-x-3">
-                    <button
-                        onClick={() => onEdit(recipe)}
-                        className="px-6 py-3 bg-sage-600 text-white rounded-xl font-bold hover:bg-sage-700 transition-all shadow-lg hover:shadow-xl"
-                    >
-                        ✏️ Edit
-                    </button>
-                    <button
-                        onClick={() => handleDelete(recipe.id)}
-                        className="px-6 py-3 bg-red-500 text-white rounded-xl font-bold hover:bg-red-600 transition-all shadow-lg hover:shadow-xl"
-                    >
-                        🗑️ Delete
-                    </button>
-                </div>
-            </div>
+  const handleDelete = async (recipeId) => {
+    if (!window.confirm('Are you sure you want to delete this recipe? This action cannot be undone.')) {
+      return;
+    }
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                {/* Main Content */}
-                <div className="lg:col-span-2 space-y-8">
-                    <div className="glass-panel overflow-hidden bg-white/40">
-                        <div className="h-96 bg-gradient-to-br from-sage-100 to-sage-200 flex items-center justify-center relative">
-                            <span className="text-sage-300 font-black text-6xl italic opacity-30">PREMIUM KITCHEN</span>
-                        </div>
-                    </div>
+    try {
+      const response = await fetch(`http://localhost:8000/recipes/${recipeId}`, {
+        method: 'DELETE'
+      });
 
-                    <div className="glass-panel p-8 bg-white/40">
-                        <h2 className="text-xs font-black text-sage-400 uppercase tracking-[0.2em] mb-8">Instructions</h2>
-                        <div className="space-y-6">
-                            {recipe.steps.map((step, idx) => (
-                                <div key={idx} className="flex space-x-6 group">
-                                    <div className="flex-shrink-0 w-10 h-10 rounded-2xl bg-sage-600 text-white flex items-center justify-center font-black shadow-lg shadow-sage-900/10 transform transition-transform group-hover:scale-110">
-                                        {idx + 1}
-                                    </div>
-                                    <p className="text-sage-700 leading-relaxed pt-2 text-lg">{step.instruction}</p>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                </div>
+      if (response.ok) {
+        onBack();
+        if (onDeleted) {
+          onDeleted();
+        }
+      } else {
+        alert('Failed to delete recipe. Please try again.');
+      }
+    } catch (error) {
+      console.error('Delete failed:', error);
+      alert('An error occurred while deleting the recipe.');
+    }
+  };
 
-                {/* Sidebar/Stats */}
-                <div className="space-y-8">
-                    <div className="glass-panel p-8 border-l-8 border-l-sage-500 bg-white/40">
-                        <h2 className="text-xs font-black text-sage-400 uppercase tracking-[0.2em] mb-6">Nutritional Profile</h2>
-                        <div className="grid grid-cols-2 gap-4 mb-10">
-                            <NutrientStat label="Calories" value={Math.round(recipe.totalCalories || 0)} unit="kcal" />
-                            <NutrientStat label="Protein" value={Math.round(recipe.totalProtein || 0)} unit="g" />
-                            <NutrientStat label="Carbs" value={Math.round(recipe.totalCarbs || 0)} unit="g" />
-                            <NutrientStat label="Fat" value={Math.round(recipe.totalFat || 0)} unit="g" />
-                        </div>
-
-                        <div className="space-y-6 bg-sage-50/50 p-6 rounded-3xl border border-sage-100">
-                            <MacroBar label="Protein" percent={40} color="bg-sage-600" />
-                            <MacroBar label="Carbs" percent={35} color="bg-earth-400" />
-                            <MacroBar label="Fat" percent={25} color="bg-earth-600" />
-                        </div>
-                    </div>
-
-                    <div className="glass-panel p-8 bg-white/40">
-                        <h2 className="text-xs font-black text-sage-400 uppercase tracking-[0.2em] mb-6">Ingredients</h2>
-                        <ul className="space-y-3">
-                            {recipe.ingredients.map((ing, idx) => (
-                                <li key={idx} className="flex justify-between items-center p-4 bg-sage-50/50 rounded-2xl border border-sage-100/50 group hover:bg-white transition-colors">
-                                    <span className="text-sage-800 font-bold">{ing.name}</span>
-                                    <span className="font-black text-sage-600 bg-white/60 px-3 py-1 rounded-lg text-xs">{ing.quantity} {ing.unit}</span>
-                                </li>
-                            ))}
-                        </ul>
-                    </div>
-                </div>
-            </div>
+  return (
+    <div className="animate-in fade-in zoom-in-95 duration-500">
+      <div className="flex items-center justify-between mb-8">
+        <div className="flex items-center space-x-4">
+          <button
+            onClick={onBack}
+            aria-label="Back to recipes"
+            className="p-3 hover:bg-sage-100 rounded-full transition-all group shadow-sm bg-white"
+          >
+            <svg className="w-6 h-6 text-sage-600 transform group-hover:-translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+          </button>
+          <h1 className="text-4xl font-black text-sage-900">{recipe.title}</h1>
         </div>
-    );
+        <div className="flex space-x-3">
+          <button
+            onClick={() => onEdit(recipe)}
+            aria-label="Edit recipe"
+            className="px-6 py-3 bg-sage-600 text-white rounded-xl font-bold hover:bg-sage-700 transition-all shadow-lg hover:shadow-xl"
+          >
+            Edit
+          </button>
+          <button
+            onClick={() => handleDelete(recipe.id)}
+            aria-label="Delete recipe"
+            className="px-6 py-3 bg-red-500 text-white rounded-xl font-bold hover:bg-red-600 transition-all shadow-lg hover:shadow-xl"
+          >
+            Delete
+          </button>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="lg:col-span-2 space-y-8">
+          <div className="glass-panel p-8 bg-white/40">
+            <h2 className="text-xs font-black text-sage-400 uppercase tracking-[0.2em] mb-8">Instructions</h2>
+            <div className="space-y-8">
+              {recipe.steps.map((step, idx) => (
+                <div key={idx} className="group">
+                  <div className="flex space-x-6">
+                    <div className="flex-shrink-0 w-10 h-10 rounded-2xl bg-sage-600 text-white flex items-center justify-center font-black shadow-lg shadow-sage-900/10 transform transition-transform group-hover:scale-110">
+                      {idx + 1}
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-sage-700 leading-relaxed pt-2 text-lg">{step.instruction}</p>
+
+                      {step.notes && (
+                        <div className="mt-3 p-3 bg-sage-50/80 rounded-xl border border-sage-100 text-sm text-sage-600 italic">
+                          <span className="font-bold not-italic text-sage-500">Tip: </span>
+                          {step.notes}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <div className="space-y-8">
+          <div className="glass-panel p-8 border-l-8 border-l-sage-500 bg-white/40">
+            <h2 className="text-xs font-black text-sage-400 uppercase tracking-[0.2em] mb-6">Nutritional Profile</h2>
+            <div className="grid grid-cols-2 gap-4 mb-10">
+              <NutrientStat label="Calories" value={getNutritionValue('totalCalories', 'calories')} unit="kcal" />
+              <NutrientStat label="Protein" value={getNutritionValue('totalProtein', 'protein')} unit="g" />
+              <NutrientStat label="Carbs" value={getNutritionValue('totalCarbs', 'carbs')} unit="g" />
+              <NutrientStat label="Fat" value={getNutritionValue('totalFat', 'fat')} unit="g" />
+            </div>
+
+            <div className="space-y-6 bg-sage-50/50 p-6 rounded-3xl border border-sage-100">
+              <MacroBar label="Protein" percent={macroDistribution.protein} color="bg-sage-600" />
+              <MacroBar label="Carbs" percent={macroDistribution.carbs} color="bg-earth-400" />
+              <MacroBar label="Fat" percent={macroDistribution.fat} color="bg-earth-600" />
+            </div>
+          </div>
+
+          <div className="glass-panel p-8 bg-white/40">
+            <h2 className="text-xs font-black text-sage-400 uppercase tracking-[0.2em] mb-6">Ingredients</h2>
+            <ul className="space-y-3">
+              {recipe.ingredients.map((ing, idx) => {
+                const name = ing.ingredient?.name || ing.name;
+                return (
+                  <li key={idx} className="flex justify-between items-center p-4 bg-sage-50/50 rounded-2xl border border-sage-100/50 group hover:bg-white transition-colors">
+                    <span className="text-sage-800 font-bold">{name}</span>
+                    <span className="font-black text-sage-600 bg-white/60 px-3 py-1 rounded-lg text-xs">{ing.quantity} {ing.unit}</span>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 };
 
 const NutrientStat = ({ label, value, unit }) => (
-    <div className="bg-white/60 rounded-2xl p-4 text-center shadow-sm">
-        <div className="text-[10px] font-black text-sage-400 uppercase tracking-widest mb-1">{label}</div>
-        <div className="text-2xl font-black text-sage-900">{value}<span className="text-xs text-sage-500 ml-0.5 font-bold">{unit}</span></div>
-    </div>
+  <div className="bg-white/60 rounded-2xl p-4 text-center shadow-sm">
+    <div className="text-[10px] font-black text-sage-400 uppercase tracking-widest mb-1">{label}</div>
+    <div className="text-2xl font-black text-sage-900">{value}<span className="text-xs text-sage-500 ml-0.5 font-bold">{unit}</span></div>
+  </div>
 );
 
 const MacroBar = ({ label, percent, color }) => (
-    <div className="space-y-1">
-        <div className="flex justify-between text-[10px] font-black uppercase tracking-widest text-sage-500">
-            <span>{label}</span>
-            <span>{percent}%</span>
-        </div>
-        <div className="h-2 w-full bg-white/60 rounded-full overflow-hidden shadow-inner">
-            <div className={`h-full ${color} rounded-full transition-all duration-1000`} style={{ width: `${percent}%` }}></div>
-        </div>
+  <div className="space-y-1">
+    <div className="flex justify-between text-[10px] font-black uppercase tracking-widest text-sage-500">
+      <span>{label}</span>
+      <span>{percent}%</span>
     </div>
+    <div className="h-2 w-full bg-white/60 rounded-full overflow-hidden shadow-inner">
+      <div className={`h-full ${color} rounded-full transition-all duration-1000`} style={{ width: `${percent}%` }}></div>
+    </div>
+  </div>
 );
 
 export default RecipeDetail;

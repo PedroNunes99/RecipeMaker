@@ -3,7 +3,7 @@ import { render, screen, fireEvent, waitFor } from '../test-utils'
 import IngredientManager from './IngredientManager'
 
 // Mock fetch globally
-global.fetch = vi.fn()
+globalThis.fetch = vi.fn()
 
 describe('IngredientManager', () => {
   beforeEach(() => {
@@ -11,7 +11,7 @@ describe('IngredientManager', () => {
     vi.clearAllMocks()
 
     // Default mock response
-    global.fetch.mockResolvedValue({
+    globalThis.fetch.mockResolvedValue({
       ok: true,
       json: async () => ([
         { id: 1, name: 'Tomato', category: 'Vegetable', calories: 18, protein: 0.9, carbs: 3.9, fats: 0.2 },
@@ -40,7 +40,7 @@ describe('IngredientManager', () => {
     render(<IngredientManager />)
 
     await waitFor(() => {
-      expect(global.fetch).toHaveBeenCalledWith('http://localhost:8000/ingredients')
+      expect(globalThis.fetch).toHaveBeenCalledWith('http://localhost:8000/ingredients')
     })
   })
 
@@ -51,6 +51,8 @@ describe('IngredientManager', () => {
       expect(screen.getByText('Tomato')).toBeInTheDocument()
       expect(screen.getByText('Chicken')).toBeInTheDocument()
     })
+
+    expect(screen.queryByRole('button', { name: /view purchase info/i })).not.toBeInTheDocument()
   })
 
   it('opens create custom modal when button is clicked', () => {
@@ -62,8 +64,16 @@ describe('IngredientManager', () => {
     expect(screen.getByText('New Ingredient')).toBeInTheDocument()
   })
 
+  it('shows save action inside custom ingredient modal', () => {
+    render(<IngredientManager />)
+
+    fireEvent.click(screen.getByRole('button', { name: /create custom/i }))
+
+    expect(screen.getByRole('button', { name: /save ingredient/i })).toBeInTheDocument()
+  })
+
   it('performs search when search button is clicked', async () => {
-    global.fetch.mockResolvedValueOnce({
+    globalThis.fetch.mockResolvedValueOnce({
       ok: true,
       json: async () => ([{ id: 3, name: 'Basil', category: 'Spice', calories: 23 }])
     })
@@ -77,7 +87,7 @@ describe('IngredientManager', () => {
     fireEvent.click(searchButton)
 
     await waitFor(() => {
-      expect(global.fetch).toHaveBeenCalledWith('http://localhost:8000/ingredients/search?q=basil')
+      expect(globalThis.fetch).toHaveBeenCalledWith('http://localhost:8000/ingredients/search?q=basil')
     })
   })
 
@@ -89,7 +99,20 @@ describe('IngredientManager', () => {
     fireEvent.keyDown(searchInput, { key: 'Enter' })
 
     await waitFor(() => {
-      expect(global.fetch).toHaveBeenCalledWith('http://localhost:8000/ingredients/search?q=garlic')
+      expect(globalThis.fetch).toHaveBeenCalledWith('http://localhost:8000/ingredients/search?q=garlic')
+    })
+  })
+
+  it('shows empty state when no local ingredient results exist', async () => {
+    globalThis.fetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ([])
+    })
+
+    render(<IngredientManager />)
+
+    await waitFor(() => {
+      expect(screen.getByText(/no matching ingredients in your library/i)).toBeInTheDocument()
     })
   })
 })

@@ -8,7 +8,8 @@ A modern, AI-powered recipe management application with an autonomous multi-agen
 - **AI-Powered**: Generate recipes using AI assistance
 - **Ingredient Database**: Comprehensive ingredient database with nutritional information
 - **Nutrition Tracking**: Automatic nutritional calculations
-- **Beautiful UI**: Modern, responsive interface built with React and Tailwind CSS
+- **Polished UI/UX**: Cleaner layout, clearer feedback states, and consistent interaction patterns
+- **Focused Recipe Views**: Image-free recipe cards/detail screens with stronger content hierarchy
 
 ## Technology Stack
 
@@ -25,7 +26,7 @@ A modern, AI-powered recipe management application with an autonomous multi-agen
 - SQLite database
 
 ### AI/ML
-- Claude API for recipe generation
+- Ollama (local) for recipe generation
 - Multi-agent autonomous development system
 
 ## Quick Start
@@ -96,7 +97,7 @@ This project includes an advanced multi-agent system for autonomous development!
    cd .agent
    npm install
    cp .env.example .env
-   # Add your ANTHROPIC_API_KEY to .env
+   # Configure OLLAMA_URL and LLM_MODEL in .env
    ```
 
 2. **Start the agent system**
@@ -135,7 +136,8 @@ RecipeMaker/
 ## API Endpoints
 
 ### Recipes
-- `GET /recipes` - List all recipes
+- `GET /recipes` - List recipes with optional search/filter/sort/pagination
+  - Query params: `q`, `minCalories`, `maxCalories`, `minProtein`, `sortBy`, `sortOrder`, `limit`, `offset`
 - `POST /recipes/manual` - Create recipe manually
 - `POST /recipes/ai-generate` - Generate recipe with AI
 
@@ -152,6 +154,7 @@ cd client
 npm run dev      # Start dev server
 npm run build    # Build for production
 npm run lint     # Run linter
+npm test -- --run # Run frontend tests
 ```
 
 ### Backend Development

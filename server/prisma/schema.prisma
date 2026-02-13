@@ -42,6 +42,7 @@ model Recipe {
   totalCarbs      Float    @default(0)
   totalFat        Float    @default(0)
   isAiGenerated   Boolean  @default(false)
+  imageUrl        String?
   creatorId       String?
   creator         User?    @relation(fields: [creatorId], references: [id])
   steps           RecipeStep[]
@@ -55,6 +56,7 @@ model RecipeStep {
   id          String   @id @default(uuid())
   order       Int
   instruction String
+  notes       String?
   photoUrl    String?
   recipeId    String
   recipe      Recipe   @relation(fields: [recipeId], references: [id], onDelete: Cascade)

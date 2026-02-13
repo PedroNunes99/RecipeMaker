@@ -1,80 +1,157 @@
-from agents.prompts import SYSTEM_PROMPT, RECIPE_SCHEMA
+from agents.prompts import SYSTEM_PROMPT, RECIPE_EXAMPLE
+from services.ollama_client import OllamaClient
 import json
-from typing import List, Dict, Any
+import re
+from typing import Dict, Any
+
 
 class CookingExpertAgent:
     """
-    An agent that specializes in recipe generation, optimization, and nutritional analysis.
+    An agent that specializes in recipe generation using local LLM (Ollama)
     """
-    
-    def __init__(self, model_name: str = "gemini-1.5-pro"):
-        self.model_name = model_name
+
+    def __init__(self):
+        self.ollama = OllamaClient()
         self.system_prompt = SYSTEM_PROMPT
 
-    async def generate_recipe(self, prompt: str, mode: str = "freestyle") -> Dict[str, Any]:
+    async def generate_recipe(self, prompt: str) -> Dict[str, Any]:
         """
-        Generates a recipe. 
-        In a live environment, this would call an LLM with structured output.
-        """
-        # Simulated LLM processing
-        if mode == "assisted":
-            return await self._simulate_assisted_mode(prompt)
-        return await self._simulate_freestyle_mode(prompt)
+        Generates a recipe using Ollama LLM
+        Falls back to mock if Ollama unavailable
 
-    async def _simulate_freestyle_mode(self, prompt: str) -> Dict[str, Any]:
-        # Realistic mock response based on prompts
+        Args:
+            prompt: User's recipe request
+
+        Returns:
+            Recipe dict with title, ingredients, steps, macros
+        """
+        # Check if Ollama is available
+        is_available = await self.ollama.is_available()
+
+        if not is_available:
+            print("Ollama unavailable, using mock data")
+            return await self._generate_mock_recipe(prompt)
+
+        # Build the full prompt with example-based instructions
+        full_prompt = f"""Create a recipe for: {prompt}
+
+You MUST respond with ONLY a JSON object, no other text. Follow this exact format:
+
+{RECIPE_EXAMPLE}
+
+Now generate a different recipe based on the user's request above. Output ONLY valid JSON, nothing else."""
+
+        # Generate recipe with Ollama
+        response = await self.ollama.generate(
+            prompt=full_prompt,
+            system_prompt=self.system_prompt,
+            temperature=0.7,
+            max_tokens=2048
+        )
+
+        if not response:
+            print("Ollama generation failed, using mock data")
+            return await self._generate_mock_recipe(prompt)
+
+        # Parse JSON from response
+        try:
+            recipe_data = self._extract_json(response)
+            return recipe_data
+        except Exception as e:
+            print(f"Failed to parse Ollama response: {e}")
+            print(f"Raw response: {response[:500]}")  # Log first 500 chars
+            return await self._generate_mock_recipe(prompt)
+
+    def _extract_json(self, text: str) -> Dict[str, Any]:
+        """
+        Extract JSON from LLM response (handles markdown code blocks, schema wrapping)
+
+        Args:
+            text: Raw LLM response
+
+        Returns:
+            Parsed JSON dict with title, ingredients, steps, macros
+
+        Raises:
+            ValueError: If no valid JSON found
+        """
+        text = text.strip()
+
+        # Try direct JSON parse first
+        try:
+            parsed = json.loads(text)
+            return self._unwrap_schema(parsed)
+        except (json.JSONDecodeError, ValueError):
+            pass
+
+        # Try to extract from markdown code block
+        json_match = re.search(r'```(?:json)?\s*(\{.*?\})\s*```', text, re.DOTALL)
+        if json_match:
+            try:
+                parsed = json.loads(json_match.group(1))
+                return self._unwrap_schema(parsed)
+            except (json.JSONDecodeError, ValueError):
+                pass
+
+        # Try to find JSON object in text (use lazy matching to avoid nested issues)
+        json_match = re.search(r'\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}', text, re.DOTALL)
+        if json_match:
+            try:
+                parsed = json.loads(json_match.group(0))
+                return self._unwrap_schema(parsed)
+            except (json.JSONDecodeError, ValueError):
+                pass
+
+        # Last resort: try greedy match
+        json_match = re.search(r'\{.*\}', text, re.DOTALL)
+        if json_match:
+            try:
+                parsed = json.loads(json_match.group(0))
+                return self._unwrap_schema(parsed)
+            except (json.JSONDecodeError, ValueError):
+                pass
+
+        raise ValueError("No valid JSON found in response")
+
+    def _unwrap_schema(self, data: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        If the LLM wrapped recipe data inside a JSON Schema structure,
+        extract the actual values from the 'properties' field.
+        """
+        if "properties" in data and "title" not in data and isinstance(data["properties"], dict):
+            props = data["properties"]
+            if "title" in props:
+                return props
+        return data
+
+    async def _generate_mock_recipe(self, prompt: str) -> Dict[str, Any]:
+        """
+        Fallback mock response for testing/development
+
+        Args:
+            prompt: User's recipe request
+
+        Returns:
+            Mock recipe dict
+        """
         return {
-            "title": f"Premium {prompt.title()}",
-            "description": f"A chef-optimized take on your request: {prompt}",
+            "title": f"Mock Recipe: {prompt[:30]}",
+            "description": f"AI-generated recipe based on: {prompt}",
             "servings": 2,
             "ingredients": [
-                {"name": "Organic Chicken Breast", "quantity": 300, "unit": "g", "category": "Meat"},
-                {"name": "Avocado oil", "quantity": 15, "unit": "ml", "category": "Oils"},
-                {"name": "Sweet Potato", "quantity": 200, "unit": "g", "category": "Vegetable"}
+                {"name": "Chicken Breast", "quantity": 300, "unit": "g", "category": "Meat"},
+                {"name": "Olive Oil", "quantity": 15, "unit": "ml", "category": "Oils"},
+                {"name": "Broccoli", "quantity": 200, "unit": "g", "category": "Vegetable"}
             ],
             "steps": [
-                {"order": 1, "instruction": "Preheat your pan to medium-high heat with Avocado oil.", "technique_tip": "High smoke point oils like avocado are best for searing."},
-                {"order": 2, "instruction": "Season chicken generously and sear for 6-7 minutes per side.", "technique_tip": "Don't move the meat too early to ensure a deep golden crust."}
+                {"order": 1, "instruction": "Preheat pan with olive oil on medium heat", "notes": "Use a non-stick pan for best results."},
+                {"order": 2, "instruction": "Season chicken and cook for 6-7 minutes per side", "notes": "Internal temperature should reach 165F (74C)."},
+                {"order": 3, "instruction": "Steam broccoli until tender", "notes": None}
             ],
             "macros": {
-                "calories": 480,
-                "protein": 35,
-                "carbs": 25,
-                "fat": 18
+                "calories": 450,
+                "protein": 45,
+                "carbs": 20,
+                "fat": 15
             }
-        }
-
-    async def _simulate_assisted_mode(self, input_data: str) -> Dict[str, Any]:
-        # Optimization logic for bullet points
-        return {
-            "title": "Optimized Creation",
-            "description": "Cleaned and structured based on your provided ingredients.",
-            "servings": 1,
-            "ingredients": [
-                {"name": "Miso Paste", "quantity": 30, "unit": "g", "category": "Seasoning"},
-                {"name": "Salmon Fillet", "quantity": 150, "unit": "g", "category": "Fish"}
-            ],
-            "steps": [
-                {"order": 1, "instruction": "Whisk miso with a splash of warm water.", "technique_tip": "Creates a smooth glaze that won't clump."},
-                {"order": 2, "instruction": "Brush over salmon and bake at 200°C for 12 minutes."}
-            ],
-            "macros": {
-                "calories": 320,
-                "protein": 28,
-                "carbs": 5,
-                "fat": 20
-            }
-        }
-
-    async def optimize_steps(self, raw_steps: List[str]) -> List[Dict[str, Any]]:
-        # Logic to re-order and professionally rephrase cooking steps
-        return [{"order": i+1, "instruction": s} for i, s in enumerate(raw_steps)]
-
-    async def extract_nutrients(self, ingredient_name: str) -> Dict[str, float]:
-        # Logic to parse ingredient strings or query nutrition APIs
-        return {
-            "calories": 100.0,
-            "protein": 5.0,
-            "carbohydrates": 20.0,
-            "fats": 2.0
         }

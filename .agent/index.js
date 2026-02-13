@@ -29,56 +29,45 @@ class AgentSystem {
     logger.info('RecipeMaker Multi-Agent Development System');
     logger.info('='.repeat(60));
 
-    // Check LLM provider
-    const provider = process.env.LLM_PROVIDER || 'ollama';
-    logger.info(`LLM Provider: ${provider}`);
+    logger.info('LLM Provider: ollama');
 
-    if (provider === 'ollama') {
-      // Check if Ollama is running
-      logger.info('Checking Ollama connection...');
-      try {
-        const ollamaUrl = process.env.OLLAMA_URL || 'http://localhost:11434';
-        const response = await fetch(`${ollamaUrl}/api/tags`);
+    // Check if Ollama is running
+    logger.info('Checking Ollama connection...');
+    try {
+      const ollamaUrl = process.env.OLLAMA_URL || 'http://localhost:11434';
+      const response = await fetch(`${ollamaUrl}/api/tags`);
 
-        if (!response.ok) {
-          logger.error('❌ Ollama is not responding!');
-          logger.info('');
-          logger.info('Please install and start Ollama:');
-          logger.info('1. Download from: https://ollama.com/download');
-          logger.info('2. Install and start Ollama');
-          logger.info('3. Download models: ollama pull deepseek-coder:33b');
-          logger.info('');
-          logger.info('See OLLAMA_SETUP.md for detailed instructions');
-          process.exit(1);
-        }
-
-        const data = await response.json();
-        const models = data.models || [];
-
-        logger.info(`✓ Ollama connected`);
-        logger.info(`✓ Available models: ${models.length > 0 ? models.map(m => m.name).join(', ') : 'None'}`);
-
-        if (models.length === 0) {
-          logger.warn('⚠ No models downloaded!');
-          logger.info('Download models with: ollama pull deepseek-coder:33b');
-        }
-
+      if (!response.ok) {
+        logger.error('Ollama is not responding');
         logger.info('');
-      } catch (error) {
-        logger.error('❌ Cannot connect to Ollama!');
-        logger.error(error.message);
+        logger.info('Please install and start Ollama:');
+        logger.info('1. Download from: https://ollama.com/download');
+        logger.info('2. Install and start Ollama');
+        logger.info('3. Download model: ollama pull deepseek-coder:33b');
         logger.info('');
-        logger.info('Is Ollama running? Start it first.');
-        logger.info('See OLLAMA_SETUP.md for setup instructions');
+        logger.info('See OLLAMA_SETUP.md for detailed instructions');
         process.exit(1);
       }
-    } else if (provider === 'anthropic') {
-      if (!process.env.ANTHROPIC_API_KEY) {
-        logger.error('ANTHROPIC_API_KEY not found in .agent/.env');
-        logger.info('Please add your Anthropic API key to .env');
-        process.exit(1);
+
+      const data = await response.json();
+      const models = data.models || [];
+
+      logger.info('Ollama connected');
+      logger.info(`Available models: ${models.length > 0 ? models.map(m => m.name).join(', ') : 'None'}`);
+
+      if (models.length === 0) {
+        logger.warn('No models downloaded');
+        logger.info('Download model with: ollama pull deepseek-coder:33b');
       }
-      logger.info('✓ Anthropic API key configured');
+
+      logger.info('');
+    } catch (error) {
+      logger.error('Cannot connect to Ollama');
+      logger.error(error.message);
+      logger.info('');
+      logger.info('Is Ollama running? Start it first.');
+      logger.info('See OLLAMA_SETUP.md for setup instructions');
+      process.exit(1);
     }
 
     logger.info('Initializing orchestrator...');

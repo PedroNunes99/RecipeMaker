@@ -13,7 +13,6 @@
     "agent:docs": "node agents/documenter.js"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.32.1",
     "dotenv": "^16.4.7",
     "chokidar": "^4.0.3",
     "ws": "^8.18.0"

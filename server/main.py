@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from prisma import Prisma
 from services.nutrition_service import NutritionService
@@ -137,8 +137,51 @@ async def import_usda_ingredient(fdc_id: int):
         raise HTTPException(status_code=500, detail=f"Error importing ingredient: {str(e)}")
 
 @app.get("/recipes")
-async def get_recipes():
-    recipes = await db.recipe.find_many(include={"steps": True, "ingredients": {"include": {"ingredient": True}}})
+async def get_recipes(
+    q: str | None = None,
+    minCalories: float | None = None,
+    maxCalories: float | None = None,
+    minProtein: float | None = None,
+    sortBy: str = "createdAt",
+    sortOrder: str = "desc",
+    limit: int = Query(default=50, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
+):
+    allowed_sort_fields = {"createdAt", "totalCalories", "totalProtein", "title"}
+    if sortBy not in allowed_sort_fields:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid sortBy. Allowed: {', '.join(sorted(allowed_sort_fields))}"
+        )
+
+    if sortOrder not in {"asc", "desc"}:
+        raise HTTPException(status_code=400, detail="Invalid sortOrder. Allowed: asc, desc")
+
+    where = {}
+
+    if q:
+        where["OR"] = [
+            {"title": {"contains": q}},
+            {"description": {"contains": q}},
+        ]
+
+    if minCalories is not None or maxCalories is not None:
+        where["totalCalories"] = {}
+        if minCalories is not None:
+            where["totalCalories"]["gte"] = minCalories
+        if maxCalories is not None:
+            where["totalCalories"]["lte"] = maxCalories
+
+    if minProtein is not None:
+        where["totalProtein"] = {"gte": minProtein}
+
+    recipes = await db.recipe.find_many(
+        where=where if where else None,
+        include={"steps": True, "ingredients": {"include": {"ingredient": True}}},
+        order={sortBy: sortOrder},
+        skip=offset,
+        take=limit,
+    )
     return recipes
 
 @app.post("/recipes/manual")
@@ -181,11 +224,12 @@ async def create_recipe_manual(data: RecipeCreateRequest):
 
     recipe = await db.recipe.create(data=recipe_data)
 
-    # Create steps
+    # Create steps with notes
     for step in data.steps:
         await db.recipestep.create(data={
             "order": step.order,
             "instruction": step.instruction,
+            "notes": step.notes,
             "recipeId": recipe.id
         })
 
@@ -261,11 +305,12 @@ async def update_recipe(recipe_id: str, data: RecipeUpdateRequest):
     if data.steps is not None:
         # Delete existing steps
         await db.recipestep.delete_many(where={"recipeId": recipe_id})
-        # Create new steps
+        # Create new steps with notes
         for step in data.steps:
             await db.recipestep.create(data={
                 "order": step.order,
                 "instruction": step.instruction,
+                "notes": step.notes,
                 "recipeId": recipe_id
             })
 

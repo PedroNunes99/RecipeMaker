@@ -1,21 +1,14 @@
-import Anthropic from '@anthropic-ai/sdk';
 import { Logger } from './utils.js';
 
 const logger = new Logger('LLMClient');
 
 /**
- * Unified LLM Client that supports multiple providers
+ * Ollama-only LLM client.
  */
 export class LLMClient {
   constructor(config) {
-    this.provider = config.provider || 'ollama'; // 'ollama', 'anthropic', 'openai'
     this.config = config;
-
-    if (this.provider === 'anthropic') {
-      this.client = new Anthropic({ apiKey: config.apiKey });
-    }
-
-    logger.info(`LLM Client initialized with provider: ${this.provider}`);
+    logger.info('LLM Client initialized with provider: ollama');
   }
 
   /**
@@ -29,16 +22,7 @@ export class LLMClient {
       systemPrompt: options.systemPrompt
     };
 
-    switch (this.provider) {
-      case 'ollama':
-        return await this.ollamaComplete(messages, modelConfig);
-      case 'anthropic':
-        return await this.anthropicComplete(messages, modelConfig);
-      case 'openai':
-        return await this.openaiComplete(messages, modelConfig);
-      default:
-        throw new Error(`Unknown provider: ${this.provider}`);
-    }
+    return await this.ollamaComplete(messages, modelConfig);
   }
 
   /**
@@ -116,58 +100,28 @@ export class LLMClient {
   }
 
   /**
-   * Anthropic completion
-   */
-  async anthropicComplete(messages, config) {
-    const params = {
-      model: config.model,
-      max_tokens: config.maxTokens,
-      temperature: config.temperature,
-      messages: messages
-    };
-
-    if (config.systemPrompt) {
-      params.system = config.systemPrompt;
-    }
-
-    return await this.client.messages.create(params);
-  }
-
-  /**
-   * OpenAI completion (if needed in the future)
-   */
-  async openaiComplete(messages, config) {
-    // Placeholder for OpenAI support
-    throw new Error('OpenAI provider not yet implemented');
-  }
-
-  /**
    * Check if the LLM service is available
    */
   async healthCheck() {
     try {
-      if (this.provider === 'ollama') {
-        const ollamaUrl = this.config.baseUrl || 'http://localhost:11434';
-        const response = await fetch(`${ollamaUrl}/api/tags`);
+      const ollamaUrl = this.config.baseUrl || 'http://localhost:11434';
+      const response = await fetch(`${ollamaUrl}/api/tags`);
 
-        if (!response.ok) {
-          return { status: 'error', message: 'Ollama service not responding' };
-        }
-
-        const data = await response.json();
-        return {
-          status: 'ok',
-          models: data.models?.map(m => m.name) || [],
-          message: `Ollama running with ${data.models?.length || 0} models`
-        };
+      if (!response.ok) {
+        return { status: 'error', message: 'Ollama service not responding' };
       }
 
-      return { status: 'ok', message: 'Provider available' };
+      const data = await response.json();
+      return {
+        status: 'ok',
+        models: data.models?.map(m => m.name) || [],
+        message: `Ollama running with ${data.models?.length || 0} models`
+      };
     } catch (error) {
       return {
         status: 'error',
         message: error.message,
-        hint: this.provider === 'ollama' ? 'Is Ollama running? Start it with: ollama serve' : ''
+        hint: 'Is Ollama running? Start it with: ollama serve'
       };
     }
   }
@@ -177,11 +131,7 @@ export class LLMClient {
  * Create LLM client from environment config
  */
 export function createLLMClient() {
-  const provider = process.env.LLM_PROVIDER || 'ollama';
-
   const config = {
-    provider,
-    apiKey: process.env.ANTHROPIC_API_KEY,
     baseUrl: process.env.OLLAMA_URL || 'http://localhost:11434',
     model: process.env.LLM_MODEL || 'deepseek-coder:33b',
     maxTokens: parseInt(process.env.MAX_TOKENS || '4096'),
